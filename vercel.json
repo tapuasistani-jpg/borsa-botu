@@ -4,12 +4,6 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "regions": ["fra1"],
-  "crons": [
-    {
-      "path": "/api/cron/telegram",
-      "schedule": "0 6 * * *"
-    }
-  ],
   "functions": {
     "app/api/prices/route.ts": { "maxDuration": 10 },
     "app/api/analysis/route.ts": { "maxDuration": 10 },
