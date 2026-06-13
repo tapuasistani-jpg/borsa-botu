@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { runBacktest } from "@/lib/backtest";
 import { fetchDailyOhlc } from "@/lib/tradingview/market-data";
-import { HISSELER } from "@/lib/stocks";
+import { isValidBistSymbol } from "@/lib/watchlist";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const symbol = (searchParams.get("symbol") ?? "THYAO").toUpperCase();
 
-  if (!HISSELER.includes(symbol as (typeof HISSELER)[number])) {
+  if (!isValidBistSymbol(symbol)) {
     return NextResponse.json({ error: "Gecersiz hisse sembolu." }, { status: 400 });
   }
 

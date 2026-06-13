@@ -1,21 +1,29 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { fetchLiveQuotes } from "@/lib/tradingview/market-data";
-import { HISSELER } from "@/lib/stocks";
+import {
+  getServerWatchlist,
+  parseSymbolsParam,
+  sanitizeWatchlist,
+} from "@/lib/watchlist";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 10;
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "Yetkisiz." }, { status: 401 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const symbols =
+    parseSymbolsParam(searchParams.get("symbols")) ?? getServerWatchlist();
+
   try {
-    const quotes = await fetchLiveQuotes([...HISSELER]);
-    const prices = [...HISSELER].map((symbol) => ({
+    const quotes = await fetchLiveQuotes(symbols);
+    const prices = symbols.map((symbol) => ({
       symbol,
       price: quotes[symbol]?.price ?? null,
       changePercent: quotes[symbol]?.changePercent,
@@ -23,6 +31,7 @@ export async function GET() {
 
     return NextResponse.json({
       prices,
+      symbols,
       updatedAt: new Date().toISOString(),
     });
   } catch (error) {
@@ -30,10 +39,8 @@ export async function GET() {
       error instanceof Error ? error.message : "Fiyat verisi alinamadi.";
     console.error("prices API:", message);
     return NextResponse.json({
-      prices: [...HISSELER].map((symbol) => ({
-        symbol,
-        price: null,
-      })),
+      prices: symbols.map((symbol) => ({ symbol, price: null })),
+      symbols,
       updatedAt: new Date().toISOString(),
       warning: message,
     });

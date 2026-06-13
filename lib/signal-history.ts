@@ -5,6 +5,8 @@ import {
 } from "./trading-config";
 
 const STORAGE_KEY = "borsa_signal_history";
+export const SIGNAL_HISTORY_STORAGE_KEY = STORAGE_KEY;
+export const SIGNAL_TRACK_STATE_KEY = "borsa_signal_track_state";
 const MAX_RECORDS = 50;
 const DISPLAY_COUNT = 10;
 
@@ -168,12 +170,12 @@ export function getSuccessScore(): SuccessScore {
 export function loadSignalState(): Record<string, string> {
   if (typeof window === "undefined") return {};
   try {
-    return JSON.parse(localStorage.getItem("borsa_signal_track_state") ?? "{}");
+    return JSON.parse(localStorage.getItem(SIGNAL_TRACK_STATE_KEY) ?? "{}");
   } catch {
     return {};
   }
 }
 
 export function saveSignalState(state: Record<string, string>) {
-  localStorage.setItem("borsa_signal_track_state", JSON.stringify(state));
+  localStorage.setItem(SIGNAL_TRACK_STATE_KEY, JSON.stringify(state));
 }

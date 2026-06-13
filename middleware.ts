@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { COOKIE_NAME } from "@/lib/session";
 
-const PUBLIC_PATHS = ["/login", "/api/auth/login"];
+const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/cron/telegram"];
 function getJwtSecret(): Uint8Array | null {
   const secret = process.env.JWT_SECRET?.trim();
   if (!secret || secret.length < 32) return null;
@@ -16,6 +16,9 @@ export async function middleware(request: NextRequest) {
     PUBLIC_PATHS.some((p) => pathname === p) ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico" ||
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/sw.js" ||
+    pathname.startsWith("/icons/") ||
     pathname.endsWith(".ico") ||
     pathname.endsWith(".png") ||
     pathname.endsWith(".svg")

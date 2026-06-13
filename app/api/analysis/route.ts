@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
-import { unstable_cache } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { analyzeStock } from "@/lib/indicators";
 import { fetchDailyOhlc } from "@/lib/tradingview/market-data";
-import { HISSELER } from "@/lib/stocks";
+import {
+  getServerWatchlist,
+  isValidBistSymbol,
+  parseSymbolsParam,
+} from "@/lib/watchlist";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -19,18 +22,6 @@ async function analyzeOne(symbol: string) {
   }
 }
 
-const getCachedAnalysis = unstable_cache(
-  async () => {
-    const results = [];
-    for (const symbol of HISSELER) {
-      results.push(await analyzeOne(symbol));
-    }
-    return results;
-  },
-  ["bist-analysis-all"],
-  { revalidate: 300 }
-);
-
 export async function GET(request: Request) {
   const session = await getSession();
   if (!session) {
@@ -39,10 +30,11 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const symbol = searchParams.get("symbol")?.toUpperCase();
+  const batchSymbols = parseSymbolsParam(searchParams.get("symbols"));
 
   try {
     if (symbol) {
-      if (!HISSELER.includes(symbol as (typeof HISSELER)[number])) {
+      if (!isValidBistSymbol(symbol)) {
         return NextResponse.json({ error: "Gecersiz sembol." }, { status: 400 });
       }
       const result = await analyzeOne(symbol);
@@ -52,9 +44,11 @@ export async function GET(request: Request) {
       });
     }
 
-    const analysis = await getCachedAnalysis();
+    const symbols = batchSymbols ?? getServerWatchlist();
+    const results = await Promise.all(symbols.map((s) => analyzeOne(s)));
+
     return NextResponse.json({
-      analysis,
+      analysis: results,
       updatedAt: new Date().toISOString(),
     });
   } catch (error) {

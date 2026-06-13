@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" fill="none">
+  <rect width="192" height="192" rx="32" fill="#0a0e17"/>
+  <rect x="16" y="16" width="160" height="160" rx="24" fill="#111827" stroke="#3b82f6" stroke-width="4"/>
+  <path d="M48 128 L72 88 L96 104 L120 72 L144 128" stroke="#22c55e" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="96" y="56" text-anchor="middle" fill="#3b82f6" font-family="Arial,sans-serif" font-size="22" font-weight="700">BIST</text>
+</svg>

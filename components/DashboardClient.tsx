@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import StockCard from "@/components/StockCard";
 import NewsBanner from "@/components/NewsBanner";
@@ -8,17 +8,30 @@ import PortfolioPanel from "@/components/PortfolioPanel";
 import BacktestPanel from "@/components/BacktestPanel";
 import MarketOverviewPanel from "@/components/MarketOverviewPanel";
 import SuccessScoreBadge from "@/components/SuccessScoreBadge";
+import MarketStatusBar from "@/components/MarketStatusBar";
+import ApiHealthBadge from "@/components/ApiHealthBadge";
+import WatchlistPanel from "@/components/WatchlistPanel";
+import DataBackupPanel from "@/components/DataBackupPanel";
 import { useTelegramAlerts } from "@/lib/hooks/useTelegramAlerts";
 import { useSignalHistory } from "@/lib/hooks/useSignalHistory";
+import {
+  createInitialHealth,
+  markHealthError,
+  markHealthSuccess,
+  type ApiHealthState,
+} from "@/lib/api-health";
+import { compareToBist100 } from "@/lib/bist100";
 import { buildMarketOverview } from "@/lib/market-overview";
 import { computeSectorTrends } from "@/lib/sectors";
 import {
-  BABA_KAGITLAR,
-  HAREKETLI_KAGITLAR,
-  HISSELER,
-  type GlobalNewsResult,
-  type StockAnalysis,
-  type StockNewsResult,
+  loadWatchlist,
+  saveWatchlist,
+  sanitizeWatchlist,
+} from "@/lib/watchlist";
+import type {
+  GlobalNewsResult,
+  StockAnalysis,
+  StockNewsResult,
 } from "@/lib/stocks";
 
 interface PriceItem {
@@ -27,8 +40,15 @@ interface PriceItem {
   changePercent?: number;
 }
 
+const BATCH = 5;
+
+function symbolsQuery(symbols: string[]) {
+  return encodeURIComponent(symbols.join(","));
+}
+
 export default function DashboardClient({ username }: { username: string }) {
   const router = useRouter();
+  const [watchlist, setWatchlist] = useState<string[]>(() => loadWatchlist());
   const [prices, setPrices] = useState<PriceItem[]>([]);
   const [analysisMap, setAnalysisMap] = useState<
     Record<string, StockAnalysis>
@@ -40,18 +60,43 @@ export default function DashboardClient({ username }: { username: string }) {
   const [keywordBankSize, setKeywordBankSize] = useState(0);
   const [newsUpdatedAt, setNewsUpdatedAt] = useState("");
   const [lastPriceUpdate, setLastPriceUpdate] = useState("");
+  const [bist100Change, setBist100Change] = useState<number | null>(null);
   const [telegramOk, setTelegramOk] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [health, setHealth] = useState<ApiHealthState>(createInitialHealth());
+
+  const handleWatchlistChange = useCallback((symbols: string[]) => {
+    const next = sanitizeWatchlist(symbols);
+    setWatchlist(next);
+    saveWatchlist(next);
+    fetch("/api/watchlist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ symbols: next }),
+    }).catch(() => {});
+  }, []);
+
+  const syncCronWatchlist = useCallback(async () => {
+    const res = await fetch("/api/watchlist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ symbols: watchlist }),
+    });
+    if (!res.ok) throw new Error("Cron sync failed");
+  }, [watchlist]);
 
   const fetchPrices = useCallback(async () => {
-    const res = await fetch("/api/prices");
+    const res = await fetch(`/api/prices?symbols=${symbolsQuery(watchlist)}`);
     if (res.status === 401) {
       router.push("/login");
       return;
     }
     const data = await res.json();
     if (!res.ok && !data.prices) {
+      setHealth((h) =>
+        markHealthError(h, "prices", data.error ?? "Fiyat hatasi")
+      );
       throw new Error(data.error ?? "Fiyat alinamadi.");
     }
     setPrices(data.prices ?? []);
@@ -59,14 +104,28 @@ export default function DashboardClient({ username }: { username: string }) {
       setLastPriceUpdate(
         new Date(data.updatedAt).toLocaleTimeString("tr-TR")
       );
+      setHealth((h) => markHealthSuccess(h, "prices", data.updatedAt));
     }
-  }, [router]);
+    if (data.warning) {
+      setHealth((h) => markHealthError(h, "prices", data.warning));
+    }
+  }, [router, watchlist]);
+
+  const fetchBist100 = useCallback(async () => {
+    const res = await fetch("/api/bist100");
+    if (!res.ok) return;
+    const data = await res.json();
+    if (typeof data.changePercent === "number") {
+      setBist100Change(data.changePercent);
+    }
+  }, []);
 
   const fetchAnalysis = useCallback(async () => {
     const map: Record<string, StockAnalysis> = {};
+    let lastUpdated: string | null = null;
 
-    for (let i = 0; i < HISSELER.length; i += 5) {
-      const batch = [...HISSELER].slice(i, i + 5);
+    for (let i = 0; i < watchlist.length; i += BATCH) {
+      const batch = watchlist.slice(i, i + BATCH);
       const results = await Promise.all(
         batch.map(async (symbol) => {
           const res = await fetch(`/api/analysis?symbol=${symbol}`);
@@ -76,6 +135,7 @@ export default function DashboardClient({ username }: { username: string }) {
           }
           if (!res.ok) return null;
           const data = await res.json();
+          lastUpdated = data.updatedAt ?? lastUpdated;
           const item = data.analysis?.[0];
           if (item && !("error" in item)) return item as StockAnalysis;
           return null;
@@ -87,7 +147,10 @@ export default function DashboardClient({ username }: { username: string }) {
     }
 
     setAnalysisMap(map);
-  }, [router]);
+    if (lastUpdated) {
+      setHealth((h) => markHealthSuccess(h, "analysis", lastUpdated!));
+    }
+  }, [router, watchlist]);
 
   const fetchNews = useCallback(async () => {
     const globalRes = await fetch("/api/news?scope=global");
@@ -97,17 +160,23 @@ export default function DashboardClient({ username }: { username: string }) {
     }
     if (!globalRes.ok) {
       const data = await globalRes.json();
+      setHealth((h) =>
+        markHealthError(h, "news", data.error ?? "Haber hatasi")
+      );
       throw new Error(data.error ?? "Haber analizi alinamadi.");
     }
     const globalData = await globalRes.json();
     setGlobalNews(globalData.global);
     setKeywordBankSize(globalData.keywordBankSize ?? 0);
     setNewsUpdatedAt(globalData.updatedAt ?? "");
+    setHealth((h) =>
+      markHealthSuccess(h, "news", globalData.updatedAt ?? new Date().toISOString())
+    );
 
     const stocks: Record<string, StockNewsResult> = {};
 
-    for (let i = 0; i < HISSELER.length; i += 5) {
-      const batch = [...HISSELER].slice(i, i + 5);
+    for (let i = 0; i < watchlist.length; i += BATCH) {
+      const batch = watchlist.slice(i, i + BATCH);
       const results = await Promise.all(
         batch.map(async (symbol) => {
           const res = await fetch(`/api/news?symbol=${symbol}`);
@@ -123,12 +192,17 @@ export default function DashboardClient({ username }: { username: string }) {
 
     setStockNewsMap(stocks);
     setNewsUpdatedAt(new Date().toLocaleTimeString("tr-TR"));
-  }, [router]);
+  }, [router, watchlist]);
 
   useEffect(() => {
     async function init() {
       try {
-        await Promise.all([fetchPrices(), fetchAnalysis(), fetchNews()]);
+        await Promise.all([
+          fetchPrices(),
+          fetchAnalysis(),
+          fetchNews(),
+          fetchBist100(),
+        ]);
         const tg = await fetch("/api/telegram/send");
         if (tg.ok) {
           const d = await tg.json();
@@ -141,7 +215,18 @@ export default function DashboardClient({ username }: { username: string }) {
       }
     }
     init();
-  }, [fetchPrices, fetchAnalysis, fetchNews]);
+  }, [fetchPrices, fetchAnalysis, fetchNews, fetchBist100]);
+
+  const watchlistReady = useRef(false);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!watchlistReady.current) {
+      watchlistReady.current = true;
+      return;
+    }
+    Promise.all([fetchPrices(), fetchAnalysis(), fetchNews()]).catch(() => {});
+  }, [watchlist, loading, fetchPrices, fetchAnalysis, fetchNews]);
 
   useEffect(() => {
     const priceInterval = setInterval(() => {
@@ -156,12 +241,17 @@ export default function DashboardClient({ username }: { username: string }) {
       fetchNews().catch(() => {});
     }, 900000);
 
+    const bistInterval = setInterval(() => {
+      fetchBist100().catch(() => {});
+    }, 300000);
+
     return () => {
       clearInterval(priceInterval);
       clearInterval(analysisInterval);
       clearInterval(newsInterval);
+      clearInterval(bistInterval);
     };
-  }, [fetchPrices, fetchAnalysis, fetchNews]);
+  }, [fetchPrices, fetchAnalysis, fetchNews, fetchBist100]);
 
   const sectorTrends = useMemo(
     () => computeSectorTrends(prices, analysisMap),
@@ -175,6 +265,7 @@ export default function DashboardClient({ username }: { username: string }) {
   );
 
   const successScore = useSignalHistory({
+    watchlist,
     analysisMap,
     stockNewsMap,
     globalNews,
@@ -184,6 +275,7 @@ export default function DashboardClient({ username }: { username: string }) {
   });
 
   useTelegramAlerts({
+    watchlist,
     analysisMap,
     stockNewsMap,
     globalNews,
@@ -218,19 +310,26 @@ export default function DashboardClient({ username }: { username: string }) {
           <h1>BIST Canli Dashboard</h1>
           <p className="subtitle">
             Hos geldin, {username} · Fiyat: {lastPriceUpdate || "—"}
+            {bist100Change !== null && (
+              <> · BIST100: {bist100Change >= 0 ? "+" : ""}
+              {bist100Change.toFixed(2)}%</>
+            )}
           </p>
         </div>
         <div className="header-actions">
           <SuccessScoreBadge score={successScore} />
           <span className="status-badge">
             <span className="status-dot" />
-            {telegramOk ? "Telegram Aktif" : "Canli · Ucretsiz"}
+            {telegramOk ? "Telegram 7/24 (Cron)" : "Canli · Ucretsiz"}
           </span>
           <button type="button" className="btn-ghost" onClick={handleLogout}>
             Cikis
           </button>
         </div>
       </header>
+
+      <MarketStatusBar />
+      <ApiHealthBadge health={health} />
 
       {error && <div className="error-msg">{error}</div>}
 
@@ -242,15 +341,24 @@ export default function DashboardClient({ username }: { username: string }) {
 
       <MarketOverviewPanel overview={marketOverview} />
 
+      <div className="tools-row tools-row-wide">
+        <WatchlistPanel
+          watchlist={watchlist}
+          onChange={handleWatchlistChange}
+          onSyncCron={syncCronWatchlist}
+        />
+        <DataBackupPanel onImported={() => setWatchlist(loadWatchlist())} />
+      </div>
+
       <div className="tools-row">
-        <PortfolioPanel prices={prices} />
-        <BacktestPanel />
+        <PortfolioPanel prices={prices} watchlist={watchlist} />
+        <BacktestPanel watchlist={watchlist} />
       </div>
 
       <section>
-        <h2 className="section-title">Baba Kagitlar</h2>
+        <h2 className="section-title">Izleme Listem ({watchlist.length})</h2>
         <div className="stock-grid">
-          {BABA_KAGITLAR.map((symbol) => {
+          {watchlist.map((symbol) => {
             const p = getPrice(symbol);
             return (
               <StockCard
@@ -262,27 +370,10 @@ export default function DashboardClient({ username }: { username: string }) {
                 stockNews={stockNewsMap[symbol] ?? null}
                 globalNews={globalNews}
                 sectorTrends={sectorTrends}
-              />
-            );
-          })}
-        </div>
-      </section>
-
-      <section>
-        <h2 className="section-title">Hareketli Kagitlar</h2>
-        <div className="stock-grid">
-          {HAREKETLI_KAGITLAR.map((symbol) => {
-            const p = getPrice(symbol);
-            return (
-              <StockCard
-                key={symbol}
-                symbol={symbol}
-                price={p?.price ?? null}
-                changePercent={p?.changePercent}
-                analysis={analysisMap[symbol] ?? null}
-                stockNews={stockNewsMap[symbol] ?? null}
-                globalNews={globalNews}
-                sectorTrends={sectorTrends}
+                bist100Comparison={compareToBist100(
+                  p?.changePercent,
+                  bist100Change
+                )}
               />
             );
           })}
@@ -306,9 +397,7 @@ export default function DashboardClient({ username }: { username: string }) {
           <span className="legend-dot" style={{ background: "var(--red)" }} />
           SAT / GUCULU SAT
         </span>
-        <span>
-          Net kar + sektor + R/R filtreli sinyal · Telegram: GUCULU sinyaller
-        </span>
+        <span>Cron 15dk · PWA ana ekrana eklenebilir</span>
       </footer>
     </main>
   );

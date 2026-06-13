@@ -1096,3 +1096,202 @@ input {
     flex-wrap: wrap;
   }
 }
+
+/* Market status bar */
+.market-status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  margin-bottom: 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.market-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.market-session-open {
+  background: var(--green-dim);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.market-session-open .market-status-dot {
+  background: var(--green);
+}
+
+.market-session-closed {
+  background: var(--red-dim);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.market-session-closed .market-status-dot {
+  background: var(--red);
+}
+
+.market-session-pre {
+  background: var(--yellow-dim);
+  border-color: rgba(234, 179, 8, 0.25);
+}
+
+.market-session-pre .market-status-dot {
+  background: var(--yellow);
+}
+
+.market-status-label {
+  font-weight: 700;
+}
+
+.market-status-sep {
+  color: var(--text-muted);
+}
+
+.market-status-detail,
+.market-status-delay {
+  color: var(--text-muted);
+}
+
+/* API health */
+.api-health-badge {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.625rem 0.875rem;
+  margin-bottom: 1rem;
+  font-size: 0.75rem;
+}
+
+.api-health-title {
+  font-weight: 700;
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.api-health-rows {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.health-ok {
+  color: var(--green);
+}
+
+.health-warn {
+  color: var(--yellow);
+}
+
+.health-error {
+  color: var(--red);
+}
+
+.api-health-badge.health-error {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: var(--red-dim);
+}
+
+.api-health-badge.health-ok {
+  border-color: rgba(34, 197, 94, 0.3);
+  background: var(--green-dim);
+}
+
+.api-health-badge.health-warn {
+  border-color: rgba(234, 179, 8, 0.3);
+  background: var(--yellow-dim);
+}
+
+/* Watchlist */
+.watchlist-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.watchlist-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.watchlist-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.watchlist-chip-remove {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.watchlist-chip-remove:hover {
+  color: var(--red);
+}
+
+.tools-row-wide {
+  grid-template-columns: 1fr 1fr;
+}
+
+.backup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+/* BIST100 comparison */
+.bist100-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.45rem 0.625rem;
+  border-radius: 8px;
+  margin-bottom: 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.bist100-outperform {
+  background: var(--green-dim);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  color: var(--green);
+}
+
+.bist100-underperform {
+  background: var(--red-dim);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: var(--red);
+}
+
+.bist100-inline {
+  background: var(--yellow-dim);
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  color: var(--yellow);
+}
+
+.bist100-label {
+  opacity: 0.85;
+  font-weight: 500;
+}
+
+@media (max-width: 640px) {
+  .tools-row-wide {
+    grid-template-columns: 1fr;
+  }
+}

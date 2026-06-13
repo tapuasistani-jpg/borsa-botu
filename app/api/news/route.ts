@@ -1,20 +1,11 @@
 import { NextResponse } from "next/server";
-import { unstable_cache } from "next/cache";
 import { getSession } from "@/lib/auth";
-import {
-  runGlobalNews,
-  runNewsEngine,
-  runStockNews,
-} from "@/lib/news/engine";
-import { HISSELER } from "@/lib/stocks";
+import { runGlobalNews, runStockNews } from "@/lib/news/engine";
+import { isValidBistSymbol } from "@/lib/watchlist";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 10;
-
-const getCachedNews = unstable_cache(runNewsEngine, ["bist-news"], {
-  revalidate: 900,
-});
 
 export async function GET(request: Request) {
   const session = await getSession();
@@ -38,7 +29,7 @@ export async function GET(request: Request) {
     }
 
     if (symbol) {
-      if (!HISSELER.includes(symbol as (typeof HISSELER)[number])) {
+      if (!isValidBistSymbol(symbol)) {
         return NextResponse.json({ error: "Gecersiz sembol." }, { status: 400 });
       }
       const stock = await runStockNews(symbol);
@@ -48,8 +39,10 @@ export async function GET(request: Request) {
       });
     }
 
-    const data = await getCachedNews();
-    return NextResponse.json(data);
+    return NextResponse.json(
+      { error: "scope=global veya symbol parametresi gerekli." },
+      { status: 400 }
+    );
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Haber analizi alinamadi.";

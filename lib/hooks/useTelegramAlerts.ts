@@ -26,6 +26,7 @@ function saveState(state: AlertState) {
 }
 
 interface UseTelegramAlertsProps {
+  watchlist: string[];
   analysisMap: Record<string, StockAnalysis>;
   stockNewsMap: Record<string, StockNewsResult>;
   globalNews: GlobalNewsResult | null;
@@ -35,6 +36,7 @@ interface UseTelegramAlertsProps {
 }
 
 export function useTelegramAlerts({
+  watchlist,
   analysisMap,
   stockNewsMap,
   globalNews,
@@ -49,7 +51,7 @@ export function useTelegramAlerts({
 
     const state = loadState();
 
-    for (const symbol of Object.keys(analysisMap)) {
+    for (const symbol of watchlist) {
       const analysis = analysisMap[symbol];
       if (!analysis) continue;
 
@@ -105,5 +107,5 @@ export function useTelegramAlerts({
           sendingRef.current.delete(symbol);
         });
     }
-  }, [analysisMap, stockNewsMap, globalNews, prices, sectorTrends, enabled]);
+  }, [watchlist, analysisMap, stockNewsMap, globalNews, prices, sectorTrends, enabled]);
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { HISSELER } from "@/lib/stocks";
 
 interface BacktestResult {
   symbol: string;
@@ -17,8 +16,8 @@ interface BacktestResult {
   summary: string;
 }
 
-export default function BacktestPanel() {
-  const [symbol, setSymbol] = useState("THYAO");
+export default function BacktestPanel({ watchlist }: { watchlist: string[] }) {
+  const [symbol, setSymbol] = useState(watchlist[0] ?? "THYAO");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<BacktestResult | null>(null);
@@ -54,7 +53,7 @@ export default function BacktestPanel() {
             onChange={(e) => setSymbol(e.target.value)}
             className="portfolio-input"
           >
-            {HISSELER.map((s) => (
+            {watchlist.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>

@@ -15,10 +15,10 @@ import type {
   StockAnalysis,
   StockNewsResult,
 } from "@/lib/stocks";
-import { HISSELER } from "@/lib/stocks";
 import type { SectorId, SectorTrendInfo } from "@/lib/sectors";
 
 interface UseSignalHistoryProps {
+  watchlist: string[];
   analysisMap: Record<string, StockAnalysis>;
   stockNewsMap: Record<string, StockNewsResult>;
   globalNews: GlobalNewsResult | null;
@@ -28,6 +28,7 @@ interface UseSignalHistoryProps {
 }
 
 export function useSignalHistory({
+  watchlist,
   analysisMap,
   stockNewsMap,
   globalNews,
@@ -49,7 +50,7 @@ export function useSignalHistory({
 
     const state = loadSignalState();
 
-    for (const symbol of HISSELER) {
+    for (const symbol of watchlist) {
       const analysis = analysisMap[symbol];
       if (!analysis) continue;
 
@@ -77,6 +78,7 @@ export function useSignalHistory({
     saveSignalState(state);
     setScore(getSuccessScore());
   }, [
+    watchlist,
     analysisMap,
     stockNewsMap,
     globalNews,

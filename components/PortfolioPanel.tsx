@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { HISSELER } from "@/lib/stocks";
 import {
   calcPnL,
   loadPortfolio,
@@ -12,9 +11,10 @@ import {
 
 interface PortfolioPanelProps {
   prices: { symbol: string; price: number | null }[];
+  watchlist: string[];
 }
 
-export default function PortfolioPanel({ prices }: PortfolioPanelProps) {
+export default function PortfolioPanel({ prices, watchlist }: PortfolioPanelProps) {
   const [items, setItems] = useState<PortfolioItem[]>([]);
   const [symbol, setSymbol] = useState("THYAO");
   const [quantity, setQuantity] = useState("");
@@ -69,7 +69,7 @@ export default function PortfolioPanel({ prices }: PortfolioPanelProps) {
             onChange={(e) => setSymbol(e.target.value)}
             className="portfolio-input"
           >
-            {HISSELER.map((s) => (
+            {watchlist.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>

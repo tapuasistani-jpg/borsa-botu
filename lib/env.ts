@@ -71,4 +71,6 @@ export const VERCEL_ENV_KEYS = [
   "JWT_SECRET",
   "TELEGRAM_BOT_TOKEN",
   "TELEGRAM_CHAT_ID",
+  "CRON_SECRET",
+  "WATCHLIST_SYMBOLS",
 ] as const;

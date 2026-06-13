@@ -6,6 +6,7 @@ import type {
   StockNewsResult,
 } from "@/lib/stocks";
 import { buildEnhancedSignal } from "@/lib/signal-engine";
+import type { Bist100Comparison } from "@/lib/bist100";
 import type { SectorId, SectorTrendInfo } from "@/lib/sectors";
 
 interface StockCardProps {
@@ -16,6 +17,7 @@ interface StockCardProps {
   stockNews: StockNewsResult | null;
   globalNews: GlobalNewsResult | null;
   sectorTrends: Record<SectorId, SectorTrendInfo>;
+  bist100Comparison?: Bist100Comparison | null;
 }
 
 function scoreLabel(score: number) {
@@ -52,6 +54,7 @@ export default function StockCard({
   stockNews,
   globalNews,
   sectorTrends,
+  bist100Comparison,
 }: StockCardProps) {
   const { combined, tradeLevels, riskReward, sectorInfo } = buildEnhancedSignal(
     symbol,
@@ -90,6 +93,15 @@ export default function StockCard({
           </span>
         </span>
       </div>
+
+      {bist100Comparison && (
+        <div
+          className={`bist100-box bist100-${bist100Comparison.trend.toLowerCase()}`}
+        >
+          <span className="bist100-label">BIST100 Kiyas</span>
+          <span className="bist100-value">{bist100Comparison.label}</span>
+        </div>
+      )}
 
       {sectorInfo && (
         <div className={`sector-info-box ${sectorTrendClass(sectorInfo.trend)}`}>

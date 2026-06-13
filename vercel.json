@@ -4,11 +4,19 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "regions": ["fra1"],
+  "crons": [
+    {
+      "path": "/api/cron/telegram",
+      "schedule": "*/15 * * * *"
+    }
+  ],
   "functions": {
     "app/api/prices/route.ts": { "maxDuration": 10 },
     "app/api/analysis/route.ts": { "maxDuration": 10 },
     "app/api/news/route.ts": { "maxDuration": 10 },
     "app/api/backtest/route.ts": { "maxDuration": 10 },
-    "app/api/telegram/send/route.ts": { "maxDuration": 10 }
+    "app/api/telegram/send/route.ts": { "maxDuration": 10 },
+    "app/api/cron/telegram/route.ts": { "maxDuration": 10 },
+    "app/api/bist100/route.ts": { "maxDuration": 10 }
   }
 }
