@@ -28,6 +28,14 @@ export async function GET() {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Fiyat verisi alinamadi.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("prices API:", message);
+    return NextResponse.json({
+      prices: [...HISSELER].map((symbol) => ({
+        symbol,
+        price: null,
+      })),
+      updatedAt: new Date().toISOString(),
+      warning: message,
+    });
   }
 }

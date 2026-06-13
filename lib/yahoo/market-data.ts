@@ -2,6 +2,7 @@ const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 const FETCH_TIMEOUT_MS = 8000;
+const QUOTE_BATCH_SIZE = 5;
 
 export interface QuoteData {
   price: number;
@@ -16,12 +17,13 @@ export interface OhlcCandle {
   volume?: number;
 }
 
-function yahooTicker(symbol: string): string {
-  return `${symbol}.IS`;
+interface YahooChartMeta {
+  regularMarketPrice?: number;
+  chartPreviousClose?: number;
 }
 
-function fromYahooTicker(ticker: string): string {
-  return ticker.replace(/\.IS$/i, "");
+function yahooTicker(symbol: string): string {
+  return `${symbol}.IS`;
 }
 
 async function yahooFetch(url: string): Promise<Response> {
@@ -39,43 +41,65 @@ async function yahooFetch(url: string): Promise<Response> {
   }
 }
 
+function quoteFromMeta(meta: YahooChartMeta | undefined): QuoteData | null {
+  const price = meta?.regularMarketPrice;
+  if (typeof price !== "number" || !Number.isFinite(price)) {
+    return null;
+  }
+
+  const prev = meta?.chartPreviousClose;
+  let changePercent: number | undefined;
+  if (typeof prev === "number" && prev > 0) {
+    changePercent = ((price - prev) / prev) * 100;
+  }
+
+  return { price, changePercent };
+}
+
+async function fetchYahooQuoteOne(symbol: string): Promise<QuoteData | null> {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooTicker(symbol))}?interval=1d&range=1d`;
+
+  const res = await yahooFetch(url);
+  if (!res.ok) {
+    return null;
+  }
+
+  const data = (await res.json()) as {
+    chart?: { result?: { meta?: YahooChartMeta }[] };
+  };
+
+  return quoteFromMeta(data.chart?.result?.[0]?.meta);
+}
+
 export async function fetchYahooQuotes(
   symbols: string[]
 ): Promise<Record<string, QuoteData>> {
   if (symbols.length === 0) return {};
 
-  const yahooSymbols = symbols.map(yahooTicker).join(",");
-  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(yahooSymbols)}`;
-
-  const res = await yahooFetch(url);
-  if (!res.ok) {
-    throw new Error(`Yahoo fiyat HTTP ${res.status}`);
-  }
-
-  const data = (await res.json()) as {
-    quoteResponse?: {
-      result?: {
-        symbol?: string;
-        regularMarketPrice?: number;
-        regularMarketChangePercent?: number;
-      }[];
-    };
-  };
-
   const quotes: Record<string, QuoteData> = {};
 
-  for (const item of data.quoteResponse?.result ?? []) {
-    const symbol = fromYahooTicker(item.symbol ?? "");
-    const price = item.regularMarketPrice;
-    if (!symbol || typeof price !== "number" || !Number.isFinite(price)) continue;
+  for (let i = 0; i < symbols.length; i += QUOTE_BATCH_SIZE) {
+    const batch = symbols.slice(i, i + QUOTE_BATCH_SIZE);
+    const results = await Promise.all(
+      batch.map(async (symbol) => {
+        try {
+          const quote = await fetchYahooQuoteOne(symbol);
+          return { symbol, quote };
+        } catch {
+          return { symbol, quote: null };
+        }
+      })
+    );
 
-    quotes[symbol] = {
-      price,
-      changePercent:
-        typeof item.regularMarketChangePercent === "number"
-          ? item.regularMarketChangePercent
-          : undefined,
-    };
+    for (const { symbol, quote } of results) {
+      if (quote) {
+        quotes[symbol] = quote;
+      }
+    }
+  }
+
+  if (Object.keys(quotes).length === 0) {
+    throw new Error("Yahoo fiyat verisi alinamadi.");
   }
 
   return quotes;
