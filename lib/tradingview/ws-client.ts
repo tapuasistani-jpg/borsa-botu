@@ -60,10 +60,7 @@ export function connectTradingView(timeoutMs = 8000): Promise<TradingViewSession
       ws.send(wrapMessage({ m: "set_locale", p: ["en", "US"] }));
       ws.send(wrapMessage({ m: "chart_create_session", p: [chartSession, ""] }));
       ws.send(wrapMessage({ m: "quote_create_session", p: [quoteSession] }));
-      ws.send(
-        wrapMessage({
-          m: "quote_set_fields",
-          p: [
+      ws.send(wrapMessage({ m: "quote_set_fields", p: [
             quoteSession,
             "ch",
             "chp",
@@ -75,7 +72,6 @@ export function connectTradingView(timeoutMs = 8000): Promise<TradingViewSession
           ],
         })
       );
-      ws.send(wrapMessage({ m: "quote_hibernate_all", p: [quoteSession] }));
 
       settled = true;
       clearTimeout(timer);
@@ -137,7 +133,12 @@ export function collectMessages(
 
 export function closeSession(session: TradingViewSession) {
   try {
-    session.ws.close();
+    session.ws.removeAllListeners();
+    if (session.ws.readyState === WebSocket.OPEN) {
+      session.ws.close();
+    } else {
+      session.ws.terminate();
+    }
   } catch {
     // ignore
   }

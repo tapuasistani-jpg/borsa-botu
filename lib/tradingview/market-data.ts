@@ -1,16 +1,17 @@
 import { tvSymbol } from "../stocks";
 import {
+  fetchYahooDailyOhlc,
+  fetchYahooQuotes,
+  type QuoteData,
+} from "../yahoo/market-data";
+import {
   closeSession,
   collectMessages,
   connectTradingView,
   send,
-  type TradingViewSession,
 } from "./ws-client";
 
-export interface QuoteData {
-  price: number;
-  changePercent?: number;
-}
+export type { QuoteData };
 
 function normalizeSymbol(name: string): string | null {
   if (name.startsWith("BIST:")) {
@@ -27,7 +28,7 @@ function normalizeSymbol(name: string): string | null {
   return name.replace("BIST:", "") || null;
 }
 
-export async function fetchLiveQuotes(
+async function fetchTradingViewQuotes(
   symbols: string[]
 ): Promise<Record<string, QuoteData>> {
   const session = await connectTradingView();
@@ -40,7 +41,7 @@ export async function fetchLiveQuotes(
   }
   send(session.ws, "quote_fast_symbols", [session.quoteSession, ...tvSymbols]);
 
-  await collectMessages(session.ws, 5000, (packet) => {
+  await collectMessages(session.ws, 4000, (packet) => {
     if (packet.m !== "qsd") return;
 
     const payload = packet.p as unknown[];
@@ -67,7 +68,7 @@ export async function fetchLiveQuotes(
   return quotes;
 }
 
-export async function fetchDailyOhlc(
+async function fetchTradingViewDailyOhlc(
   symbol: string,
   candleCount = 100
 ): Promise<
@@ -77,10 +78,7 @@ export async function fetchDailyOhlc(
   const exchangeSymbol = tvSymbol(symbol);
   const resolve = JSON.stringify({ adjustment: "splits", symbol: exchangeSymbol });
 
-  send(session.ws, "quote_add_symbols", [
-    session.quoteSession,
-    `=${resolve}`,
-  ]);
+  send(session.ws, "quote_add_symbols", [session.quoteSession, `=${resolve}`]);
   send(session.ws, "resolve_symbol", [
     session.chartSession,
     "sds_sym_1",
@@ -105,7 +103,7 @@ export async function fetchDailyOhlc(
     volume?: number;
   }[] = [];
 
-  await collectMessages(session.ws, 8000, (packet) => {
+  await collectMessages(session.ws, 6000, (packet) => {
     if (packet.m !== "timescale_update") return;
 
     const payload = packet.p as unknown[];
@@ -127,4 +125,60 @@ export async function fetchDailyOhlc(
 
   closeSession(session);
   return candles;
+}
+
+export async function fetchLiveQuotes(
+  symbols: string[]
+): Promise<Record<string, QuoteData>> {
+  let quotes: Record<string, QuoteData> = {};
+
+  try {
+    quotes = await fetchYahooQuotes(symbols);
+  } catch (error) {
+    console.error(
+      "Yahoo fiyat hatasi:",
+      error instanceof Error ? error.message : error
+    );
+  }
+
+  const missing = symbols.filter((symbol) => !quotes[symbol]);
+  if (missing.length === 0) {
+    return quotes;
+  }
+
+  try {
+    const tv = await fetchTradingViewQuotes(missing);
+    return { ...quotes, ...tv };
+  } catch (error) {
+    console.error(
+      "TradingView fiyat hatasi:",
+      error instanceof Error ? error.message : error
+    );
+    return quotes;
+  }
+}
+
+export async function fetchDailyOhlc(
+  symbol: string,
+  candleCount = 100
+): Promise<
+  { open: number; high: number; low: number; close: number; volume?: number }[]
+> {
+  try {
+    const candles = await fetchYahooDailyOhlc(symbol, candleCount);
+    if (candles.length >= 20) {
+      return candles;
+    }
+  } catch (error) {
+    console.error(
+      `Yahoo mum hatasi (${symbol}):`,
+      error instanceof Error ? error.message : error
+    );
+  }
+
+  const tvCandles = await fetchTradingViewDailyOhlc(symbol, candleCount);
+  if (tvCandles.length === 0) {
+    throw new Error(`${symbol} icin mum verisi alinamadi.`);
+  }
+  return tvCandles;
 }
