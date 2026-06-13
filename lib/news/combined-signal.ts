@@ -2,10 +2,36 @@ import type { StockAnalysis, SignalColor } from "@/lib/stocks";
 import type {
   CombinedSignal,
   CombinedSignalEn,
+  CombineSignalOptions,
   GlobalNewsResult,
   NewsSentiment,
   StockNewsResult,
 } from "./types";
+
+function isBuySignal(signalEn: CombinedSignalEn): boolean {
+  return (
+    signalEn === "STRONG BUY" ||
+    signalEn === "BUY" ||
+    signalEn === "RISKY BUY"
+  );
+}
+
+function applyRiskRewardFilter(
+  result: CombinedSignal,
+  options?: CombineSignalOptions
+): CombinedSignal {
+  const rr = options?.riskReward;
+  if (!rr || rr.passesThreshold || !isBuySignal(result.signalEn)) {
+    return result;
+  }
+
+  return {
+    signalEn: "HOLD",
+    signalTr: "DUR",
+    color: "yellow",
+    reason: `Net kar potansiyeli %${rr.netProfitPercent.toFixed(1)} — komisyon sonrasi minimum esigin altinda, AL sinyali beklemeye alindi.`,
+  };
+}
 
 function isTaBullish(ta: StockAnalysis): boolean {
   return ta.totalScore >= 3;
@@ -39,7 +65,8 @@ function effectiveSentiment(
 export function combineTaAndNews(
   ta: StockAnalysis | null,
   stockNews: StockNewsResult | null,
-  globalNews: GlobalNewsResult | null
+  globalNews: GlobalNewsResult | null,
+  options?: CombineSignalOptions
 ): CombinedSignal {
   if (!ta) {
     return {
@@ -57,12 +84,15 @@ export function combineTaAndNews(
   // Haber riski + teknik AL -> RISKY BUY veya HOLD
   if (news === "RISKY") {
     if (isTaBullish(ta)) {
-      return {
-        signalEn: "RISKY BUY",
-        signalTr: "RISKLI AL",
-        color: "orange",
-        reason: "Teknik AL diyor ama haberlerde savas/jeopolitik veya sistemik risk var.",
-      };
+      return applyRiskRewardFilter(
+        {
+          signalEn: "RISKY BUY",
+          signalTr: "RISKLI AL",
+          color: "orange",
+          reason: "Teknik AL diyor ama haberlerde savas/jeopolitik veya sistemik risk var.",
+        },
+        options
+      );
     }
     if (isTaBearish(ta)) {
       return {
@@ -92,12 +122,15 @@ export function combineTaAndNews(
 
   // Olumlu haber + teknik AL -> guclendir
   if (news === "POSITIVE" && isTaBullish(ta)) {
-    return {
-      signalEn: isTaStrongBullish(ta) ? "STRONG BUY" : "BUY",
-      signalTr: isTaStrongBullish(ta) ? "GUCULU AL" : "AL",
-      color: "green",
-      reason: "Teknik ve haberler uyumlu — alis yonu destekleniyor.",
-    };
+    return applyRiskRewardFilter(
+      {
+        signalEn: isTaStrongBullish(ta) ? "STRONG BUY" : "BUY",
+        signalTr: isTaStrongBullish(ta) ? "GUCULU AL" : "AL",
+        color: "green",
+        reason: "Teknik ve haberler uyumlu — alis yonu destekleniyor.",
+      },
+      options
+    );
   }
 
   // Olumsuz haber + teknik SAT -> guclendir
@@ -127,12 +160,14 @@ export function combineTaAndNews(
     red: "red",
   };
 
-  return {
+  const base: CombinedSignal = {
     signalEn: ta.signalEn as CombinedSignalEn,
     signalTr: ta.signalTr,
     color: colorMap[ta.color] ?? "yellow",
     reason: "Haberler notr — karar teknik analize dayaniyor.",
   };
+
+  return applyRiskRewardFilter(base, options);
 }
 
 export function sentimentLabel(s: NewsSentiment): string {

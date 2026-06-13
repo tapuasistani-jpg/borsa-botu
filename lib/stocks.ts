@@ -39,6 +39,9 @@ export interface StockAnalysis {
   macdSignal: number;
   ema20: number;
   ema50: number;
+  bbLower: number;
+  bbUpper: number;
+  bbMiddle: number;
   updatedAt: string;
 }
 

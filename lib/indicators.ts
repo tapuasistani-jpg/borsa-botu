@@ -141,6 +141,9 @@ export function analyzeStock(symbol: string, candles: OhlcCandle[]): StockAnalys
     macdSignal: macd.signal,
     ema20,
     ema50,
+    bbLower: bb.lower,
+    bbUpper: bb.upper,
+    bbMiddle: bb.middle,
     updatedAt: now,
   };
 }

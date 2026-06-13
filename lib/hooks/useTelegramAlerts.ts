@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { buildEnhancedSignal } from "@/lib/signal-engine";
 import type {
   GlobalNewsResult,
   StockAnalysis,
   StockNewsResult,
 } from "@/lib/stocks";
-import { combineTaAndNews } from "@/lib/news/combined-signal";
+import type { SectorId, SectorTrendInfo } from "@/lib/sectors";
 
 const STORAGE_KEY = "borsa_telegram_state";
 
@@ -29,6 +30,7 @@ interface UseTelegramAlertsProps {
   stockNewsMap: Record<string, StockNewsResult>;
   globalNews: GlobalNewsResult | null;
   prices: { symbol: string; price: number | null }[];
+  sectorTrends: Record<SectorId, SectorTrendInfo>;
   enabled: boolean;
 }
 
@@ -37,6 +39,7 @@ export function useTelegramAlerts({
   stockNewsMap,
   globalNews,
   prices,
+  sectorTrends,
   enabled,
 }: UseTelegramAlertsProps) {
   const sendingRef = useRef<Set<string>>(new Set());
@@ -50,10 +53,14 @@ export function useTelegramAlerts({
       const analysis = analysisMap[symbol];
       if (!analysis) continue;
 
-      const combined = combineTaAndNews(
+      const price = prices.find((p) => p.symbol === symbol)?.price ?? null;
+      const { combined } = buildEnhancedSignal(
+        symbol,
         analysis,
         stockNewsMap[symbol] ?? null,
-        globalNews
+        globalNews,
+        price,
+        sectorTrends
       );
 
       const isStrong =
@@ -75,7 +82,6 @@ export function useTelegramAlerts({
       }
 
       sendingRef.current.add(symbol);
-      const price = prices.find((p) => p.symbol === symbol)?.price ?? null;
 
       fetch("/api/telegram/send", {
         method: "POST",
@@ -99,5 +105,5 @@ export function useTelegramAlerts({
           sendingRef.current.delete(symbol);
         });
     }
-  }, [analysisMap, stockNewsMap, globalNews, prices, enabled]);
+  }, [analysisMap, stockNewsMap, globalNews, prices, sectorTrends, enabled]);
 }

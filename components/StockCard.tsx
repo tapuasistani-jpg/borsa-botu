@@ -1,12 +1,12 @@
 "use client";
 
 import type {
-  CombinedSignal,
   GlobalNewsResult,
   StockAnalysis,
   StockNewsResult,
 } from "@/lib/stocks";
-import { combineTaAndNews, sentimentLabel } from "@/lib/news/combined-signal";
+import { buildEnhancedSignal } from "@/lib/signal-engine";
+import type { SectorId, SectorTrendInfo } from "@/lib/sectors";
 
 interface StockCardProps {
   symbol: string;
@@ -15,6 +15,7 @@ interface StockCardProps {
   analysis: StockAnalysis | null;
   stockNews: StockNewsResult | null;
   globalNews: GlobalNewsResult | null;
+  sectorTrends: Record<SectorId, SectorTrendInfo>;
 }
 
 function scoreLabel(score: number) {
@@ -23,7 +24,7 @@ function scoreLabel(score: number) {
   return { text: "-", className: "chip-neutral" };
 }
 
-function combinedSignalClass(color: CombinedSignal["color"]) {
+function combinedSignalClass(color: string) {
   if (color === "green") return "signal-badge signal-green";
   if (color === "red") return "signal-badge signal-red";
   if (color === "orange") return "signal-badge signal-orange";
@@ -37,6 +38,12 @@ function alertClass(sentiment: string) {
   return "news-alert news-alert-neutral";
 }
 
+function sectorTrendClass(trend: string) {
+  if (trend === "UP") return "sector-box-up";
+  if (trend === "DOWN") return "sector-box-down";
+  return "sector-box-flat";
+}
+
 export default function StockCard({
   symbol,
   price,
@@ -44,11 +51,15 @@ export default function StockCard({
   analysis,
   stockNews,
   globalNews,
+  sectorTrends,
 }: StockCardProps) {
-  const combined: CombinedSignal = combineTaAndNews(
+  const { combined, tradeLevels, riskReward, sectorInfo } = buildEnhancedSignal(
+    symbol,
     analysis,
     stockNews,
-    globalNews
+    globalNews,
+    price,
+    sectorTrends
   );
 
   const taSignal = analysis
@@ -79,6 +90,54 @@ export default function StockCard({
           </span>
         </span>
       </div>
+
+      {sectorInfo && (
+        <div className={`sector-info-box ${sectorTrendClass(sectorInfo.trend)}`}>
+          <span className="sector-info-label">Sektor: {sectorInfo.sectorName}</span>
+          <span className="sector-info-trend">
+            {sectorInfo.trendLabel} ·{" "}
+            {sectorInfo.avgChangePercent >= 0 ? "+" : ""}
+            {sectorInfo.avgChangePercent.toFixed(1)}%
+          </span>
+        </div>
+      )}
+
+      {tradeLevels && price !== null && (
+        <div className="trade-levels-box">
+          <div className="trade-level-row">
+            <span className="trade-level-label">Hedef Satis</span>
+            <span className="trade-level-value trade-tp">
+              {tradeLevels.takeProfit.toFixed(2)} TL
+            </span>
+          </div>
+          <div className="trade-level-row">
+            <span className="trade-level-label">Zarar Durdur</span>
+            <span className="trade-level-value trade-sl">
+              {tradeLevels.stopLoss.toFixed(2)} TL
+            </span>
+          </div>
+          <div className="trade-level-row">
+            <span className="trade-level-label">R/R Orani</span>
+            <span className="trade-level-value">
+              1:{tradeLevels.riskRewardRatio.toFixed(1)}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {riskReward && price !== null && (
+        <div
+          className={`risk-reward-box ${
+            riskReward.passesThreshold ? "rr-pass" : "rr-fail"
+          }`}
+        >
+          <span>Net Kar Potansiyeli: %{riskReward.netProfitPercent.toFixed(1)}</span>
+          <span className="rr-detail">
+            (Brut %{riskReward.grossProfitPercent.toFixed(1)} · Komisyon -%
+            {riskReward.commissionPercent.toFixed(2)})
+          </span>
+        </div>
+      )}
 
       {stockNews && (
         <div className={alertClass(sentiment)}>
@@ -135,7 +194,13 @@ export default function StockCard({
           <div className="signal-row">
             <span className="signal-label">Haber</span>
             <span className={`news-sentiment news-${sentiment.toLowerCase()}`}>
-              {sentimentLabel(stockNews.sentiment)}
+              {sentiment === "POSITIVE"
+                ? "Pozitif"
+                : sentiment === "NEGATIVE"
+                  ? "Negatif"
+                  : sentiment === "RISKY"
+                    ? "Riskli"
+                    : "Notr"}
             </span>
           </div>
         )}

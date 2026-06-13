@@ -1,12 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import StockCard from "@/components/StockCard";
 import NewsBanner from "@/components/NewsBanner";
 import PortfolioPanel from "@/components/PortfolioPanel";
 import BacktestPanel from "@/components/BacktestPanel";
+import MarketOverviewPanel from "@/components/MarketOverviewPanel";
+import SuccessScoreBadge from "@/components/SuccessScoreBadge";
 import { useTelegramAlerts } from "@/lib/hooks/useTelegramAlerts";
+import { useSignalHistory } from "@/lib/hooks/useSignalHistory";
+import { buildMarketOverview } from "@/lib/market-overview";
+import { computeSectorTrends } from "@/lib/sectors";
 import {
   BABA_KAGITLAR,
   HAREKETLI_KAGITLAR,
@@ -45,15 +50,16 @@ export default function DashboardClient({ username }: { username: string }) {
       router.push("/login");
       return;
     }
-    if (!res.ok) {
-      const data = await res.json();
+    const data = await res.json();
+    if (!res.ok && !data.prices) {
       throw new Error(data.error ?? "Fiyat alinamadi.");
     }
-    const data = await res.json();
-    setPrices(data.prices);
-    setLastPriceUpdate(
-      new Date(data.updatedAt).toLocaleTimeString("tr-TR")
-    );
+    setPrices(data.prices ?? []);
+    if (data.updatedAt) {
+      setLastPriceUpdate(
+        new Date(data.updatedAt).toLocaleTimeString("tr-TR")
+      );
+    }
   }, [router]);
 
   const fetchAnalysis = useCallback(async () => {
@@ -157,11 +163,32 @@ export default function DashboardClient({ username }: { username: string }) {
     };
   }, [fetchPrices, fetchAnalysis, fetchNews]);
 
+  const sectorTrends = useMemo(
+    () => computeSectorTrends(prices, analysisMap),
+    [prices, analysisMap]
+  );
+
+  const marketOverview = useMemo(
+    () =>
+      buildMarketOverview(globalNews, prices, analysisMap, sectorTrends),
+    [globalNews, prices, analysisMap, sectorTrends]
+  );
+
+  const successScore = useSignalHistory({
+    analysisMap,
+    stockNewsMap,
+    globalNews,
+    prices,
+    sectorTrends,
+    enabled: !loading,
+  });
+
   useTelegramAlerts({
     analysisMap,
     stockNewsMap,
     globalNews,
     prices,
+    sectorTrends,
     enabled: telegramOk && !loading,
   });
 
@@ -194,6 +221,7 @@ export default function DashboardClient({ username }: { username: string }) {
           </p>
         </div>
         <div className="header-actions">
+          <SuccessScoreBadge score={successScore} />
           <span className="status-badge">
             <span className="status-dot" />
             {telegramOk ? "Telegram Aktif" : "Canli · Ucretsiz"}
@@ -211,6 +239,8 @@ export default function DashboardClient({ username }: { username: string }) {
         keywordBankSize={keywordBankSize}
         updatedAt={newsUpdatedAt}
       />
+
+      <MarketOverviewPanel overview={marketOverview} />
 
       <div className="tools-row">
         <PortfolioPanel prices={prices} />
@@ -231,6 +261,7 @@ export default function DashboardClient({ username }: { username: string }) {
                 analysis={analysisMap[symbol] ?? null}
                 stockNews={stockNewsMap[symbol] ?? null}
                 globalNews={globalNews}
+                sectorTrends={sectorTrends}
               />
             );
           })}
@@ -251,6 +282,7 @@ export default function DashboardClient({ username }: { username: string }) {
                 analysis={analysisMap[symbol] ?? null}
                 stockNews={stockNewsMap[symbol] ?? null}
                 globalNews={globalNews}
+                sectorTrends={sectorTrends}
               />
             );
           })}
@@ -274,7 +306,9 @@ export default function DashboardClient({ username }: { username: string }) {
           <span className="legend-dot" style={{ background: "var(--red)" }} />
           SAT / GUCULU SAT
         </span>
-        <span>Teknik + Haber = Ortak Karar · Telegram: GUCULU sinyaller</span>
+        <span>
+          Net kar + sektor + R/R filtreli sinyal · Telegram: GUCULU sinyaller
+        </span>
       </footer>
     </main>
   );

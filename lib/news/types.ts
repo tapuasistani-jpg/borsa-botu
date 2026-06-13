@@ -50,6 +50,13 @@ export interface CombinedSignal {
   reason: string;
 }
 
+export interface CombineSignalOptions {
+  riskReward?: {
+    netProfitPercent: number;
+    passesThreshold: boolean;
+  } | null;
+}
+
 export const KRITIK_KELIMELER = [
   "Trump",
   "savaş",
