@@ -2,10 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { COOKIE_NAME } from "@/lib/session";
 
-export const runtime = 'nodejs';
-
 const PUBLIC_PATHS = ["/login", "/api/auth/login"];
-
 function getJwtSecret(): Uint8Array | null {
   const secret = process.env.JWT_SECRET?.trim();
   if (!secret || secret.length < 32) return null;

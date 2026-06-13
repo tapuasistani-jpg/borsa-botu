@@ -40,7 +40,7 @@ export async function fetchLiveQuotes(
   }
   send(session.ws, "quote_fast_symbols", [session.quoteSession, ...tvSymbols]);
 
-  await collectMessages(session.ws, 6000, (packet) => {
+  await collectMessages(session.ws, 5000, (packet) => {
     if (packet.m !== "qsd") return;
 
     const payload = packet.p as unknown[];

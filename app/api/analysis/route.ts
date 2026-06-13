@@ -7,20 +7,7 @@ import { HISSELER } from "@/lib/stocks";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-async function analyzeAllStocks() {
-  const symbols = [...HISSELER];
-  const results: Awaited<ReturnType<typeof analyzeOne>>[] = [];
-
-  // Vercel zaman asimini onlemek icin 3'erli gruplar halinde analiz
-  for (let i = 0; i < symbols.length; i += 3) {
-    const batch = symbols.slice(i, i + 3);
-    const batchResults = await Promise.all(batch.map(analyzeOne));
-    results.push(...batchResults);
-  }
-
-  return results;
-}
+export const maxDuration = 10;
 
 async function analyzeOne(symbol: string) {
   try {
@@ -33,18 +20,38 @@ async function analyzeOne(symbol: string) {
 }
 
 const getCachedAnalysis = unstable_cache(
-  analyzeAllStocks,
-  ["bist-analysis"],
+  async () => {
+    const results = [];
+    for (const symbol of HISSELER) {
+      results.push(await analyzeOne(symbol));
+    }
+    return results;
+  },
+  ["bist-analysis-all"],
   { revalidate: 300 }
 );
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "Yetkisiz." }, { status: 401 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const symbol = searchParams.get("symbol")?.toUpperCase();
+
   try {
+    if (symbol) {
+      if (!HISSELER.includes(symbol as (typeof HISSELER)[number])) {
+        return NextResponse.json({ error: "Gecersiz sembol." }, { status: 400 });
+      }
+      const result = await analyzeOne(symbol);
+      return NextResponse.json({
+        analysis: [result],
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
     const analysis = await getCachedAnalysis();
     return NextResponse.json({
       analysis,

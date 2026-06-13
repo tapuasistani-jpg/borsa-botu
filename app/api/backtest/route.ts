@@ -6,6 +6,7 @@ import { HISSELER } from "@/lib/stocks";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+export const maxDuration = 10;
 
 export async function GET(request: Request) {
   const session = await getSession();

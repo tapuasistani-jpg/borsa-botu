@@ -10,6 +10,7 @@ import { useTelegramAlerts } from "@/lib/hooks/useTelegramAlerts";
 import {
   BABA_KAGITLAR,
   HAREKETLI_KAGITLAR,
+  HISSELER,
   type GlobalNewsResult,
   type StockAnalysis,
   type StockNewsResult,
@@ -56,40 +57,66 @@ export default function DashboardClient({ username }: { username: string }) {
   }, [router]);
 
   const fetchAnalysis = useCallback(async () => {
-    const res = await fetch("/api/analysis");
-    if (res.status === 401) {
-      router.push("/login");
-      return;
-    }
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.error ?? "Analiz alinamadi.");
-    }
-    const data = await res.json();
     const map: Record<string, StockAnalysis> = {};
-    for (const item of data.analysis) {
-      if (item && !("error" in item)) {
-        map[item.symbol] = item as StockAnalysis;
-      }
+
+    for (let i = 0; i < HISSELER.length; i += 5) {
+      const batch = [...HISSELER].slice(i, i + 5);
+      const results = await Promise.all(
+        batch.map(async (symbol) => {
+          const res = await fetch(`/api/analysis?symbol=${symbol}`);
+          if (res.status === 401) {
+            router.push("/login");
+            return null;
+          }
+          if (!res.ok) return null;
+          const data = await res.json();
+          const item = data.analysis?.[0];
+          if (item && !("error" in item)) return item as StockAnalysis;
+          return null;
+        })
+      );
+      results.forEach((item) => {
+        if (item) map[item.symbol] = item;
+      });
     }
+
     setAnalysisMap(map);
   }, [router]);
 
   const fetchNews = useCallback(async () => {
-    const res = await fetch("/api/news");
-    if (res.status === 401) {
+    const globalRes = await fetch("/api/news?scope=global");
+    if (globalRes.status === 401) {
       router.push("/login");
       return;
     }
-    if (!res.ok) {
-      const data = await res.json();
+    if (!globalRes.ok) {
+      const data = await globalRes.json();
       throw new Error(data.error ?? "Haber analizi alinamadi.");
     }
-    const data = await res.json();
-    setGlobalNews(data.global);
-    setStockNewsMap(data.stocks ?? {});
-    setKeywordBankSize(data.keywordBankSize ?? 0);
-    setNewsUpdatedAt(data.updatedAt ?? "");
+    const globalData = await globalRes.json();
+    setGlobalNews(globalData.global);
+    setKeywordBankSize(globalData.keywordBankSize ?? 0);
+    setNewsUpdatedAt(globalData.updatedAt ?? "");
+
+    const stocks: Record<string, StockNewsResult> = {};
+
+    for (let i = 0; i < HISSELER.length; i += 5) {
+      const batch = [...HISSELER].slice(i, i + 5);
+      const results = await Promise.all(
+        batch.map(async (symbol) => {
+          const res = await fetch(`/api/news?symbol=${symbol}`);
+          if (!res.ok) return null;
+          const data = await res.json();
+          return data.stocks?.[symbol] as StockNewsResult | undefined;
+        })
+      );
+      batch.forEach((sym, idx) => {
+        if (results[idx]) stocks[sym] = results[idx]!;
+      });
+    }
+
+    setStockNewsMap(stocks);
+    setNewsUpdatedAt(new Date().toLocaleTimeString("tr-TR"));
   }, [router]);
 
   useEffect(() => {

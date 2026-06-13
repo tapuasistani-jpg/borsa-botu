@@ -35,7 +35,7 @@ function randomId(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 12)}`;
 }
 
-export function connectTradingView(timeoutMs = 12000): Promise<TradingViewSession> {
+export function connectTradingView(timeoutMs = 8000): Promise<TradingViewSession> {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(WS_URL, {
       headers: {

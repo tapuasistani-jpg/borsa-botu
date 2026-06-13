@@ -24,7 +24,7 @@ function mapAnalysis(
   };
 }
 
-export async function runNewsEngine(): Promise<NewsEngineResult> {
+export async function runGlobalNews(): Promise<Pick<NewsEngineResult, "global" | "keywordBankSize">> {
   const { articles: globalArticles, keywordsMatched } = await fetchGlobalNews();
   const globalAnalysis = analyzeSentimentRuleBased(globalArticles);
 
@@ -36,17 +36,22 @@ export async function runNewsEngine(): Promise<NewsEngineResult> {
         : globalAnalysis.matchedKeywords.map((m) => m.word).slice(0, 12),
   };
 
+  return { global, keywordBankSize: getKeywordBankSize() };
+}
+
+export async function runStockNews(symbol: string): Promise<StockNewsResult> {
+  const headlines = await fetchStockNews(symbol);
+  const analysis = analyzeSentimentRuleBased(headlines);
+  return { symbol, ...mapAnalysis(analysis, headlines) };
+}
+
+export async function runNewsEngine(): Promise<NewsEngineResult> {
+  const { global, keywordBankSize } = await runGlobalNews();
   const stocks: Record<string, StockNewsResult> = {};
 
   for (let i = 0; i < HISSELER.length; i += 5) {
     const batch = HISSELER.slice(i, i + 5);
-    const results = await Promise.all(
-      batch.map(async (symbol) => {
-        const headlines = await fetchStockNews(symbol);
-        const analysis = analyzeSentimentRuleBased(headlines);
-        return { symbol, ...mapAnalysis(analysis, headlines) };
-      })
-    );
+    const results = await Promise.all(batch.map((s) => runStockNews(s)));
     batch.forEach((sym, idx) => {
       stocks[sym] = results[idx];
     });
@@ -55,7 +60,7 @@ export async function runNewsEngine(): Promise<NewsEngineResult> {
   return {
     global,
     stocks,
-    keywordBankSize: getKeywordBankSize(),
+    keywordBankSize,
     updatedAt: new Date().toISOString(),
   };
 }
