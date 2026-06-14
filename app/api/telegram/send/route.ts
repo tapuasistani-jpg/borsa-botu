@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { isTelegramConfigured, sendTelegramAlert } from "@/lib/telegram/send";
+import { isTelegramConfigured, sendTelegramAlert, sendTelegramPriceAlert } from "@/lib/telegram/send";
 
 export const runtime = "nodejs";
 
@@ -19,6 +19,25 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
+    const type = String(body.type ?? "signal");
+
+    if (type === "price") {
+      const kind = body.kind === "TAKE_PROFIT" ? "TAKE_PROFIT" : "STOP_LOSS";
+      const result = await sendTelegramPriceAlert({
+        symbol: String(body.symbol ?? ""),
+        kind,
+        price: Number(body.price),
+        level: Number(body.level),
+        stopLoss: Number(body.stopLoss),
+        takeProfit: Number(body.takeProfit),
+      });
+
+      if (!result.ok) {
+        return NextResponse.json({ error: result.error }, { status: 500 });
+      }
+      return NextResponse.json({ ok: true });
+    }
+
     const signalEn = String(body.signalEn ?? "");
 
     if (signalEn !== "STRONG BUY" && signalEn !== "STRONG SELL") {

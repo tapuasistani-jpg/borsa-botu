@@ -12,7 +12,16 @@ import MarketStatusBar from "@/components/MarketStatusBar";
 import ApiHealthBadge from "@/components/ApiHealthBadge";
 import WatchlistPanel from "@/components/WatchlistPanel";
 import DataBackupPanel from "@/components/DataBackupPanel";
+import MacroPanel from "@/components/MacroPanel";
+import KapAlertsPanel from "@/components/KapAlertsPanel";
+import CronStatusBadge, {
+  type CronStatusData,
+} from "@/components/CronStatusBadge";
+import type { MacroSnapshot } from "@/lib/macro";
+import type { KapDisclosure } from "@/lib/kap/types";
 import { useTelegramAlerts } from "@/lib/hooks/useTelegramAlerts";
+import { usePriceLevelAlerts } from "@/lib/hooks/usePriceLevelAlerts";
+import { useTradeLevelSync } from "@/lib/hooks/useTradeLevelSync";
 import { useSignalHistory } from "@/lib/hooks/useSignalHistory";
 import {
   createInitialHealth,
@@ -65,6 +74,12 @@ export default function DashboardClient({ username }: { username: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [health, setHealth] = useState<ApiHealthState>(createInitialHealth());
+  const [macro, setMacro] = useState<MacroSnapshot | null>(null);
+  const [macroLoading, setMacroLoading] = useState(true);
+  const [kapFeeds, setKapFeeds] = useState<Record<string, KapDisclosure[]>>({});
+  const [kapLoading, setKapLoading] = useState(true);
+  const [cronStatus, setCronStatus] = useState<CronStatusData | null>(null);
+  const [cronLoading, setCronLoading] = useState(true);
 
   const handleWatchlistChange = useCallback((symbols: string[]) => {
     const next = sanitizeWatchlist(symbols);
@@ -117,6 +132,46 @@ export default function DashboardClient({ username }: { username: string }) {
     const data = await res.json();
     if (typeof data.changePercent === "number") {
       setBist100Change(data.changePercent);
+    }
+  }, []);
+
+  const fetchMacro = useCallback(async () => {
+    try {
+      const res = await fetch("/api/macro");
+      if (!res.ok) return;
+      const data = (await res.json()) as MacroSnapshot;
+      setMacro(data);
+    } finally {
+      setMacroLoading(false);
+    }
+  }, []);
+
+  const fetchKap = useCallback(async () => {
+    if (watchlist.length === 0) {
+      setKapFeeds({});
+      setKapLoading(false);
+      return;
+    }
+    try {
+      const res = await fetch(
+        `/api/kap?symbols=${symbolsQuery(watchlist)}`
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      setKapFeeds(data.feeds ?? {});
+    } finally {
+      setKapLoading(false);
+    }
+  }, [watchlist]);
+
+  const fetchCronStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/cron/status");
+      if (!res.ok) return;
+      const data = (await res.json()) as CronStatusData;
+      setCronStatus(data);
+    } finally {
+      setCronLoading(false);
     }
   }, []);
 
@@ -202,6 +257,9 @@ export default function DashboardClient({ username }: { username: string }) {
           fetchAnalysis(),
           fetchNews(),
           fetchBist100(),
+          fetchMacro(),
+          fetchKap(),
+          fetchCronStatus(),
         ]);
         const tg = await fetch("/api/telegram/send");
         if (tg.ok) {
@@ -215,7 +273,7 @@ export default function DashboardClient({ username }: { username: string }) {
       }
     }
     init();
-  }, [fetchPrices, fetchAnalysis, fetchNews, fetchBist100]);
+  }, [fetchPrices, fetchAnalysis, fetchNews, fetchBist100, fetchMacro, fetchKap, fetchCronStatus]);
 
   const watchlistReady = useRef(false);
 
@@ -225,7 +283,9 @@ export default function DashboardClient({ username }: { username: string }) {
       watchlistReady.current = true;
       return;
     }
-    Promise.all([fetchPrices(), fetchAnalysis(), fetchNews()]).catch(() => {});
+    Promise.all([fetchPrices(), fetchAnalysis(), fetchNews(), fetchKap()]).catch(
+      () => {}
+    );
   }, [watchlist, loading, fetchPrices, fetchAnalysis, fetchNews]);
 
   useEffect(() => {
@@ -245,13 +305,28 @@ export default function DashboardClient({ username }: { username: string }) {
       fetchBist100().catch(() => {});
     }, 300000);
 
+    const macroInterval = setInterval(() => {
+      fetchMacro().catch(() => {});
+    }, 600000);
+
+    const kapInterval = setInterval(() => {
+      fetchKap().catch(() => {});
+    }, 900000);
+
+    const cronInterval = setInterval(() => {
+      fetchCronStatus().catch(() => {});
+    }, 120000);
+
     return () => {
       clearInterval(priceInterval);
       clearInterval(analysisInterval);
       clearInterval(newsInterval);
       clearInterval(bistInterval);
+      clearInterval(macroInterval);
+      clearInterval(kapInterval);
+      clearInterval(cronInterval);
     };
-  }, [fetchPrices, fetchAnalysis, fetchNews, fetchBist100]);
+  }, [fetchPrices, fetchAnalysis, fetchNews, fetchBist100, fetchMacro, fetchKap, fetchCronStatus]);
 
   const sectorTrends = useMemo(
     () => computeSectorTrends(prices, analysisMap),
@@ -282,6 +357,26 @@ export default function DashboardClient({ username }: { username: string }) {
     prices,
     sectorTrends,
     enabled: telegramOk && !loading,
+  });
+
+  usePriceLevelAlerts({
+    watchlist,
+    analysisMap,
+    stockNewsMap,
+    globalNews,
+    prices,
+    sectorTrends,
+    enabled: telegramOk && !loading,
+  });
+
+  useTradeLevelSync({
+    watchlist,
+    analysisMap,
+    stockNewsMap,
+    globalNews,
+    prices,
+    sectorTrends,
+    enabled: !loading,
   });
 
   async function handleLogout() {
@@ -331,6 +426,11 @@ export default function DashboardClient({ username }: { username: string }) {
       <MarketStatusBar />
       <ApiHealthBadge health={health} />
 
+      <div className="top-panels-row">
+        <MacroPanel macro={macro} loading={macroLoading} />
+        <CronStatusBadge data={cronStatus} loading={cronLoading} />
+      </div>
+
       {error && <div className="error-msg">{error}</div>}
 
       <NewsBanner
@@ -340,6 +440,8 @@ export default function DashboardClient({ username }: { username: string }) {
       />
 
       <MarketOverviewPanel overview={marketOverview} />
+
+      <KapAlertsPanel feeds={kapFeeds} loading={kapLoading} />
 
       <div className="tools-row tools-row-wide">
         <WatchlistPanel
@@ -397,7 +499,7 @@ export default function DashboardClient({ username }: { username: string }) {
           <span className="legend-dot" style={{ background: "var(--red)" }} />
           SAT / GUCULU SAT
         </span>
-        <span>Cron 15dk · PWA ana ekrana eklenebilir</span>
+        <span>Cron 15dk · KAP · SL/TP alarm · TradingView</span>
       </footer>
     </main>
   );

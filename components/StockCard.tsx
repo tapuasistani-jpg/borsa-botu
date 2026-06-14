@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type {
   GlobalNewsResult,
   StockAnalysis,
@@ -8,6 +9,7 @@ import type {
 import { buildEnhancedSignal } from "@/lib/signal-engine";
 import type { Bist100Comparison } from "@/lib/bist100";
 import type { SectorId, SectorTrendInfo } from "@/lib/sectors";
+import TradingViewWidget from "@/components/TradingViewWidget";
 
 interface StockCardProps {
   symbol: string;
@@ -70,6 +72,7 @@ export default function StockCard({
     : "—";
 
   const sentiment = stockNews?.sentiment ?? "NEUTRAL";
+  const [showChart, setShowChart] = useState(false);
 
   return (
     <article className="stock-card">
@@ -134,8 +137,19 @@ export default function StockCard({
               1:{tradeLevels.riskRewardRatio.toFixed(1)}
             </span>
           </div>
+          <p className="trade-level-hint">SL/TP Telegram alarmi (cron + acik panel)</p>
         </div>
       )}
+
+      <button
+        type="button"
+        className="btn-chart-toggle"
+        onClick={() => setShowChart((v) => !v)}
+      >
+        {showChart ? "Grafigi Gizle" : "TradingView Grafigi"}
+      </button>
+
+      {showChart && <TradingViewWidget symbol={symbol} />}
 
       {riskReward && price !== null && (
         <div
