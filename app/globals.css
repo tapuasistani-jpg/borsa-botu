@@ -605,6 +605,13 @@ input {
   border-radius: 50%;
 }
 
+.legend-author {
+  margin-left: auto;
+  color: var(--text);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
 .loading-screen {
   min-height: 100vh;
   display: flex;
@@ -1530,5 +1537,44 @@ input {
 @media (max-width: 768px) {
   .macro-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+.author-credit {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  background: rgba(17, 24, 39, 0.92);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+  user-select: none;
+}
+
+.author-credit-label {
+  opacity: 0.85;
+}
+
+.author-credit strong {
+  color: var(--text);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 640px) {
+  .author-credit {
+    right: 0.75rem;
+    bottom: 0.75rem;
+    font-size: 0.6875rem;
+    padding: 0.4rem 0.7rem;
   }
 }

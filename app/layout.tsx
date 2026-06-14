@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import AuthorCredit from "@/components/AuthorCredit";
 import PWARegister from "@/components/PWARegister";
 import "./globals.css";
 
@@ -33,6 +34,7 @@ export default function RootLayout({
       <body>
         <PWARegister />
         {children}
+        <AuthorCredit />
       </body>
     </html>
   );

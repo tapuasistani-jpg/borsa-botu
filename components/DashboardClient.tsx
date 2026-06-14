@@ -500,6 +500,7 @@ export default function DashboardClient({ username }: { username: string }) {
           SAT / GUCULU SAT
         </span>
         <span>Cron 15dk · KAP · SL/TP alarm · TradingView</span>
+        <span className="legend-author">Emre ARSLAN</span>
       </footer>
     </main>
   );
