@@ -1,6 +1,6 @@
 import type { NewsArticle, NewsSentiment } from "./types";
 import {
-  KEYWORD_BANK,
+  KEYWORD_LIST,
   SORTED_KEYWORDS,
   type KeywordCategory,
 } from "./keywords";
@@ -92,22 +92,22 @@ function buildAlertMessage(
   ];
 
   if (sentiment === "RISKY") {
-    if (riskyTags.some((t) => ["Savas", "Fuze", "Nukleer", "Saldirı", "Bombardiman"].includes(t))) {
-      return "⚠️ Savas Riski Algilandi";
+    if (riskyTags.some((t) => ["Savas", "Jeopolitik"].includes(t))) {
+      return "⚠️ Jeopolitik / Savas Riski Algilandi";
     }
-    if (riskyTags.includes("Trump")) {
-      return "⚠️ Trump / Tarife Riski Algilandi";
-    }
-    if (riskyTags.some((t) => ["Kriz", "Resesyon", "Iflas", "Cokus"].includes(t))) {
-      return "⚠️ Ekonomik Kriz Riski Algilandi";
-    }
-    if (riskyTags.some((t) => ["Gerginlik", "Jeopolitik", "Yaptirim"].includes(t))) {
-      return "⚠️ Jeopolitik Gerginlik Algilandi";
+    if (riskyTags.includes("Risk")) {
+      return "⚠️ Yuksek Piyasa Riski Algilandi";
     }
     return `⚠️ Yuksek Risk Algilandi (%${percents.risky})`;
   }
 
   if (sentiment === "POSITIVE") {
+    const peace = matches.some(
+      (m) => m.category === "POSITIVE" && m.tag === "Baris"
+    );
+    if (peace) {
+      return `✅ Baris / Istikrar Sinyali (%${percents.positive} pozitif)`;
+    }
     return `Haber Duyarliligi: %${percents.positive} Pozitif`;
   }
 
@@ -221,5 +221,5 @@ export function analyzeSentimentRuleBased(
 }
 
 export function getKeywordBankSize(): number {
-  return KEYWORD_BANK.length;
+  return KEYWORD_LIST.length;
 }

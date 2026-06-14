@@ -1,166 +1,245 @@
-export type KeywordCategory = "RISKY" | "POSITIVE" | "NEGATIVE";
+export type KeywordCategory = "RISKY" | "POSITIVE" | "NEGATIVE" | "TOPIC";
 
 export interface WeightedKeyword {
   word: string;
   weight: number;
   category: KeywordCategory;
-  /** Uyari mesajinda kullanilacak etiket */
   tag?: string;
 }
 
-/**
- * Genis kelime havuzu — tamamen ucretsiz kural tabanli analiz.
- * Agirlik: 1 (hafif) | 2 (orta) | 3 (guclu) | 4 (kritik)
- */
-export const KEYWORD_BANK: WeightedKeyword[] = [
-  // --- RISKY / Jeopolitik / Savas (kritik) ---
-  { word: "savaş", weight: 4, category: "RISKY", tag: "Savas" },
-  { word: "savas", weight: 4, category: "RISKY", tag: "Savas" },
-  { word: "war", weight: 4, category: "RISKY", tag: "Savas" },
-  { word: "füze", weight: 4, category: "RISKY", tag: "Fuze" },
-  { word: "fuze", weight: 4, category: "RISKY", tag: "Fuze" },
-  { word: "missile", weight: 4, category: "RISKY", tag: "Fuze" },
-  { word: "nükleer", weight: 4, category: "RISKY", tag: "Nukleer" },
-  { word: "nukleer", weight: 4, category: "RISKY", tag: "Nukleer" },
-  { word: "nuclear", weight: 4, category: "RISKY", tag: "Nukleer" },
-  { word: "istila", weight: 4, category: "RISKY", tag: "Istila" },
-  { word: "invasion", weight: 4, category: "RISKY", tag: "Istila" },
-  { word: "saldırı", weight: 3, category: "RISKY", tag: "Saldirı" },
-  { word: "saldirı", weight: 3, category: "RISKY", tag: "Saldirı" },
-  { word: "attack", weight: 3, category: "RISKY", tag: "Saldirı" },
-  { word: "bombardıman", weight: 3, category: "RISKY", tag: "Bombardiman" },
-  { word: "bombardiman", weight: 3, category: "RISKY", tag: "Bombardiman" },
-  { word: "gazze", weight: 3, category: "RISKY", tag: "Gazze" },
-  { word: "gaza", weight: 3, category: "RISKY", tag: "Gazze" },
-  { word: "ukrayna", weight: 3, category: "RISKY", tag: "Ukrayna" },
-  { word: "ukraine", weight: 3, category: "RISKY", tag: "Ukrayna" },
-  { word: "rusya", weight: 2, category: "RISKY", tag: "Rusya" },
-  { word: "russia", weight: 2, category: "RISKY", tag: "Rusya" },
-  { word: "israil", weight: 2, category: "RISKY", tag: "Israil" },
-  { word: "israel", weight: 2, category: "RISKY", tag: "Israil" },
-  { word: "iran", weight: 2, category: "RISKY", tag: "Iran" },
-  { word: "taiwan", weight: 2, category: "RISKY", tag: "Taiwan" },
-  { word: "tayvan", weight: 2, category: "RISKY", tag: "Taiwan" },
-
-  // --- RISKY / Ekonomik-politik risk ---
-  { word: "kriz", weight: 3, category: "RISKY", tag: "Kriz" },
-  { word: "crisis", weight: 3, category: "RISKY", tag: "Kriz" },
-  { word: "gerginlik", weight: 3, category: "RISKY", tag: "Gerginlik" },
-  { word: "tension", weight: 3, category: "RISKY", tag: "Gerginlik" },
-  { word: "trump tehdit", weight: 3, category: "RISKY", tag: "Trump" },
-  { word: "trump tariff", weight: 3, category: "RISKY", tag: "Trump" },
-  { word: "trump tarife", weight: 3, category: "RISKY", tag: "Trump" },
-  { word: "yaptırım", weight: 3, category: "RISKY", tag: "Yaptirim" },
-  { word: "yaptirim", weight: 3, category: "RISKY", tag: "Yaptirim" },
-  { word: "sanction", weight: 3, category: "RISKY", tag: "Yaptirim" },
-  { word: "gümrük", weight: 2, category: "RISKY", tag: "Gumruk" },
-  { word: "gumruk", weight: 2, category: "RISKY", tag: "Gumruk" },
-  { word: "tariff", weight: 2, category: "RISKY", tag: "Tarife" },
-  { word: "tarife", weight: 2, category: "RISKY", tag: "Tarife" },
-  { word: "trump", weight: 2, category: "RISKY", tag: "Trump" },
-  { word: "iflas", weight: 3, category: "RISKY", tag: "Iflas" },
-  { word: "bankruptcy", weight: 3, category: "RISKY", tag: "Iflas" },
-  { word: "default", weight: 3, category: "RISKY", tag: "Default" },
-  { word: "resesyon", weight: 3, category: "RISKY", tag: "Resesyon" },
-  { word: "recession", weight: 3, category: "RISKY", tag: "Resesyon" },
-  { word: "panik", weight: 2, category: "RISKY", tag: "Panik" },
-  { word: "çöküş", weight: 3, category: "RISKY", tag: "Cokus" },
-  { word: "cokus", weight: 3, category: "RISKY", tag: "Cokus" },
-  { word: "collapse", weight: 3, category: "RISKY", tag: "Cokus" },
-  { word: "sistemik risk", weight: 3, category: "RISKY", tag: "Sistemik" },
-  { word: "jeopolitik", weight: 2, category: "RISKY", tag: "Jeopolitik" },
-  { word: "geopolitical", weight: 2, category: "RISKY", tag: "Jeopolitik" },
-
-  // --- NEGATIVE / Olumsuz piyasa ---
-  { word: "düşüş", weight: 2, category: "NEGATIVE" },
-  { word: "dusus", weight: 2, category: "NEGATIVE" },
-  { word: "drop", weight: 2, category: "NEGATIVE" },
-  { word: "fall", weight: 2, category: "NEGATIVE" },
-  { word: "kayıp", weight: 2, category: "NEGATIVE" },
-  { word: "kayip", weight: 2, category: "NEGATIVE" },
-  { word: "loss", weight: 2, category: "NEGATIVE" },
-  { word: "negatif", weight: 2, category: "NEGATIVE" },
-  { word: "negative", weight: 2, category: "NEGATIVE" },
-  { word: "satış baskısı", weight: 2, category: "NEGATIVE" },
-  { word: "sell-off", weight: 2, category: "NEGATIVE" },
-  { word: "enflasyon", weight: 2, category: "NEGATIVE" },
-  { word: "inflation", weight: 2, category: "NEGATIVE" },
-  { word: "faiz artış", weight: 3, category: "NEGATIVE" },
-  { word: "faiz artis", weight: 3, category: "NEGATIVE" },
-  { word: "rate hike", weight: 3, category: "NEGATIVE" },
-  { word: "devalüasyon", weight: 3, category: "NEGATIVE" },
-  { word: "devaluasyon", weight: 3, category: "NEGATIVE" },
-  { word: "zayıf", weight: 1, category: "NEGATIVE" },
-  { word: "zayif", weight: 1, category: "NEGATIVE" },
-  { word: "weak", weight: 1, category: "NEGATIVE" },
-  { word: "endişe", weight: 2, category: "NEGATIVE" },
-  { word: "endise", weight: 2, category: "NEGATIVE" },
-  { word: "concern", weight: 2, category: "NEGATIVE" },
-  { word: "uyarı", weight: 2, category: "NEGATIVE" },
-  { word: "uyari", weight: 2, category: "NEGATIVE" },
-  { word: "warning", weight: 2, category: "NEGATIVE" },
-  { word: "gerileme", weight: 2, category: "NEGATIVE" },
-  { word: "decline", weight: 2, category: "NEGATIVE" },
-  { word: "borç", weight: 2, category: "NEGATIVE" },
-  { word: "borc", weight: 2, category: "NEGATIVE" },
-  { word: "debt", weight: 2, category: "NEGATIVE" },
-  { word: "zarar", weight: 2, category: "NEGATIVE" },
-  { word: "losses", weight: 2, category: "NEGATIVE" },
-  { word: "dolar yükseldi", weight: 2, category: "NEGATIVE" },
-  { word: "kur şoku", weight: 3, category: "NEGATIVE" },
-  { word: "kur soku", weight: 3, category: "NEGATIVE" },
-
-  // --- POSITIVE / Olumlu piyasa ---
-  { word: "barış", weight: 3, category: "POSITIVE", tag: "Baris" },
-  { word: "baris", weight: 3, category: "POSITIVE", tag: "Baris" },
-  { word: "peace", weight: 3, category: "POSITIVE", tag: "Baris" },
-  { word: "anlaşma", weight: 3, category: "POSITIVE", tag: "Anlasma" },
-  { word: "anlasma", weight: 3, category: "POSITIVE", tag: "Anlasma" },
-  { word: "deal", weight: 2, category: "POSITIVE", tag: "Anlasma" },
-  { word: "agreement", weight: 2, category: "POSITIVE", tag: "Anlasma" },
-  { word: "büyüme", weight: 3, category: "POSITIVE" },
-  { word: "buyume", weight: 3, category: "POSITIVE" },
-  { word: "growth", weight: 3, category: "POSITIVE" },
-  { word: "spacex", weight: 2, category: "POSITIVE", tag: "SpaceX" },
-  { word: "space x", weight: 2, category: "POSITIVE", tag: "SpaceX" },
-  { word: "kâr", weight: 3, category: "POSITIVE" },
-  { word: "kar ", weight: 2, category: "POSITIVE" },
-  { word: "profit", weight: 3, category: "POSITIVE" },
-  { word: "kazanç", weight: 2, category: "POSITIVE" },
-  { word: "kazanc", weight: 2, category: "POSITIVE" },
-  { word: "teşvik", weight: 3, category: "POSITIVE", tag: "Tesvik" },
-  { word: "tesvik", weight: 3, category: "POSITIVE", tag: "Tesvik" },
-  { word: "stimulus", weight: 3, category: "POSITIVE", tag: "Tesvik" },
-  { word: "yükseliş", weight: 2, category: "POSITIVE" },
-  { word: "yukselis", weight: 2, category: "POSITIVE" },
-  { word: "rally", weight: 2, category: "POSITIVE" },
-  { word: "rekor", weight: 2, category: "POSITIVE" },
-  { word: "record high", weight: 2, category: "POSITIVE" },
-  { word: "pozitif", weight: 2, category: "POSITIVE" },
-  { word: "positive", weight: 2, category: "POSITIVE" },
-  { word: "toparlanma", weight: 2, category: "POSITIVE" },
-  { word: "recovery", weight: 2, category: "POSITIVE" },
-  { word: "faiz indirim", weight: 3, category: "POSITIVE" },
-  { word: "rate cut", weight: 3, category: "POSITIVE" },
-  { word: "rahatlama", weight: 2, category: "POSITIVE" },
-  { word: "optimist", weight: 2, category: "POSITIVE" },
-  { word: "umut", weight: 1, category: "POSITIVE" },
-  { word: "hope", weight: 1, category: "POSITIVE" },
-  { word: "güçlü", weight: 2, category: "POSITIVE" },
-  { word: "guclu", weight: 2, category: "POSITIVE" },
-  { word: "strong", weight: 2, category: "POSITIVE" },
-  { word: "destek", weight: 1, category: "POSITIVE" },
-  { word: "support", weight: 1, category: "POSITIVE" },
-  { word: "yatırım", weight: 1, category: "POSITIVE" },
-  { word: "yatirim", weight: 1, category: "POSITIVE" },
-  { word: "investment", weight: 1, category: "POSITIVE" },
-  { word: "ihracat rekor", weight: 2, category: "POSITIVE" },
-  { word: "temettü", weight: 2, category: "POSITIVE" },
-  { word: "temettu", weight: 2, category: "POSITIVE" },
-  { word: "dividend", weight: 2, category: "POSITIVE" },
+/** 1 — Piyasa pozitif (40) */
+export const PIYASA_POZITIF: readonly string[] = [
+  "Barış anlaşması",
+  "diplomatik çözüm",
+  "ateşkes ilan edildi",
+  "Hürmüz boğazı açıldı",
+  "normalleşme süreci",
+  "siyasi mutabakat",
+  "yatırımcı güveni",
+  "dip alımları",
+  "teknoloji rallisi",
+  "yapay zeka talebi",
+  "likidite artışı",
+  "sermaye girişi",
+  "ekonomik büyüme",
+  "istikrar sağlandı",
+  "gerginlik azaldı",
+  "piyasa iyimserliği",
+  "kurumsal alım",
+  "yabancı yatırım",
+  "teşvik paketi",
+  "mali disiplin",
+  "vergi indirimi",
+  "kredi notu artışı",
+  "bilanço başarısı",
+  "nakit akışı",
+  "temettü verimi",
+  "hisse geri alımı",
+  "endeks yükselişi",
+  "enflasyon düşüşü",
+  "faiz indirimi",
+  "merkez bankası desteği",
+  "küresel ticaret",
+  "arz güvenliği",
+  "tedarik zinciri",
+  "sanayi üretimi",
+  "tüketici güveni",
+  "perakende artışı",
+  "konut sektörü",
+  "altyapı yatırımı",
+  "enerji anlaşması",
+  "ihracat rekoru",
 ];
 
-/** Uzun kelimeler once eslestirilsin (false positive onleme) */
+/** 2 — Piyasa negatif / risk (40) */
+export const PIYASA_NEGATIF: readonly string[] = [
+  "Savaş riski",
+  "jeopolitik gerilim",
+  "saldırı haberi",
+  "ambargo kararı",
+  "enerji krizi",
+  "enflasyonist baskı",
+  "faiz artırımı",
+  "stagflasyon riski",
+  "resesyon korkusu",
+  "tedarik darboğazı",
+  "döviz dalgalanması",
+  "bütçe açığı",
+  "kredi notu düşüşü",
+  "şirket iflası",
+  "işsizlik artışı",
+  "sektörel daralma",
+  "piyasa paniği",
+  "sert satış",
+  "yabancı çıkışı",
+  "likidite sıkışıklığı",
+  "dış ticaret açığı",
+  "jeopolitik risk",
+  "bölge çatışması",
+  "ambargo tehdidi",
+  "yaptırım kararı",
+  "merkez bankası şahin",
+  "nakit sıkıntısı",
+  "borç krizi",
+  "hisse senedi düşüşü",
+  "satış baskısı",
+  "marj daralması",
+  "hammadde maliyeti",
+  "lojistik sorunu",
+  "siyasi belirsizlik",
+  "seçim riski",
+  "protesto eylemi",
+  "grev kararı",
+  "üretim kaybı",
+  "pazar kaybı",
+  "karamsar görünüm",
+];
+
+/** 3 — Aktörler ve konu başlıkları (58) */
+export const AKTOR_KONU: readonly string[] = [
+  "Trump",
+  "Fed",
+  "TCMB",
+  "BIST100",
+  "Hürmüz",
+  "İran",
+  "ABD",
+  "İsrail",
+  "Beyrut",
+  "İsviçre",
+  "OECD",
+  "Euro Bölgesi",
+  "Çin ekonomisi",
+  "teknoloji",
+  "ulaştırma",
+  "bankacılık",
+  "enerji",
+  "petrol",
+  "doğalgaz",
+  "yenilenebilir",
+  "karbon",
+  "ihracat",
+  "ithalat",
+  "döviz",
+  "dolar",
+  "altın",
+  "tahvil",
+  "faiz",
+  "büyüme",
+  "istihdam",
+  "üretim",
+  "sanayi",
+  "perakende",
+  "konut",
+  "altyapı",
+  "teknoloji",
+  "yapay zeka",
+  "tarım",
+  "otomotiv",
+  "savunma",
+  "sağlık",
+  "turizm",
+  "lojistik",
+  "finans",
+  "emtia",
+  "borsa",
+  "hisse",
+  "portföy",
+  "risk",
+  "getiri",
+  "strateji",
+  "analiz",
+  "beklenti",
+  "tahmin",
+  "rapor",
+  "veri",
+  "açıklama",
+  "toplantı",
+];
+
+/** Tum tarama listesi (138) */
+export const KEYWORD_LIST: readonly string[] = [
+  ...PIYASA_POZITIF,
+  ...PIYASA_NEGATIF,
+  ...AKTOR_KONU,
+];
+
+const RISKY_NEGATIF = new Set(
+  [
+    "Savaş riski",
+    "jeopolitik gerilim",
+    "saldırı haberi",
+    "ambargo kararı",
+    "enerji krizi",
+    "stagflasyon riski",
+    "resesyon korkusu",
+    "jeopolitik risk",
+    "bölge çatışması",
+    "ambargo tehdidi",
+    "yaptırım kararı",
+    "borç krizi",
+    "piyasa paniği",
+    "sert satış",
+  ].map((s) => s.toLowerCase())
+);
+
+function toWeightedPositive(phrase: string): WeightedKeyword {
+  const strong =
+    /barış|anlaşma|ateşkes|faiz indirimi|vergi indirimi|teşvik|ihracat rekoru|yatırımcı güveni/i.test(
+      phrase
+    );
+  return {
+    word: phrase,
+    weight: strong ? 3 : 2,
+    category: "POSITIVE",
+    tag: /barış|anlaşma|ateşkes/i.test(phrase) ? "Baris" : undefined,
+  };
+}
+
+function toWeightedNegative(phrase: string): WeightedKeyword {
+  const lower = phrase.toLowerCase();
+  if (RISKY_NEGATIF.has(lower)) {
+    return {
+      word: phrase,
+      weight: /savaş|saldırı|ambargo|yaptırım|jeopolitik|bölge çatışması/i.test(
+        phrase
+      )
+        ? 4
+        : 3,
+      category: "RISKY",
+      tag: /savaş|saldırı/i.test(phrase)
+        ? "Savas"
+        : /jeopolitik|ambargo|yaptırım/i.test(phrase)
+          ? "Jeopolitik"
+          : "Risk",
+    };
+  }
+  return {
+    word: phrase,
+    weight: /faiz artırımı|iflas|panik|kriz|resesyon/i.test(phrase) ? 3 : 2,
+    category: "NEGATIVE",
+  };
+}
+
+function toWeightedTopic(phrase: string): WeightedKeyword {
+  return {
+    word: phrase,
+    weight: 0,
+    category: "TOPIC",
+    tag: ["Trump", "Fed", "TCMB", "BIST100", "Hürmüz", "İran"].includes(phrase)
+      ? phrase
+      : undefined,
+  };
+}
+
+export const KEYWORD_BANK: WeightedKeyword[] = [
+  ...PIYASA_POZITIF.map(toWeightedPositive),
+  ...PIYASA_NEGATIF.map(toWeightedNegative),
+  ...AKTOR_KONU.map(toWeightedTopic),
+];
+
 export const SORTED_KEYWORDS = [...KEYWORD_BANK].sort(
   (a, b) => b.word.length - a.word.length
 );
+
+export const KRITIK_KELIMELER: readonly string[] = KEYWORD_LIST;

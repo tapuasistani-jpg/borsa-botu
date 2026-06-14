@@ -57,30 +57,7 @@ export interface CombineSignalOptions {
   } | null;
 }
 
-export const KRITIK_KELIMELER = [
-  "Trump",
-  "savaş",
-  "savas",
-  "war",
-  "BIST",
-  "Borsa Istanbul",
-  "faiz",
-  "Fed",
-  "TCMB",
-  "enflasyon",
-  "dolar",
-  "altın",
-  "gümrük",
-  "tarife",
-  "Ukrayna",
-  "İsrail",
-  "Gazze",
-  "Kriz",
-  "risk",
-  "Twitter",
-  "X ",
-  "Elon Musk",
-] as const;
+export { KRITIK_KELIMELER } from "./keywords";
 
 export const HISSE_ANAHTAR_KELIMELER: Record<string, string[]> = {
   THYAO: ["THY", "Türk Hava Yolları", "THYAO"],
