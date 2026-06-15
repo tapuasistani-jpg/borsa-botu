@@ -2,6 +2,7 @@ import { getJsonKv, setJsonKv } from "@/lib/db/kv";
 
 const KV = {
   telegramState: "cron:telegram_state",
+  lastScanSignals: "cron:last_scan_signals",
   rotation: "cron:rotation",
   watchlist: "cron:watchlist",
   heartbeat: "cron:heartbeat",
@@ -106,4 +107,15 @@ export async function upsertTradeLevelsCache(
   const cache = await loadTradeLevelsCache();
   cache[symbol] = { ...entry, updatedAt: new Date().toISOString() };
   await saveTradeLevelsCache(cache);
+}
+
+/** Son cron taramasindaki birlesik sinyaller (degisiklik tespiti) */
+export async function loadLastScanSignals(): Promise<Record<string, string>> {
+  return getJsonKv(KV.lastScanSignals, {});
+}
+
+export async function saveLastScanSignals(
+  signals: Record<string, string>
+): Promise<void> {
+  await setJsonKv(KV.lastScanSignals, signals);
 }

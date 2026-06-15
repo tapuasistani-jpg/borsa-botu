@@ -357,7 +357,8 @@ export default function DashboardClient({ username }: { username: string }) {
     globalNews,
     prices,
     sectorTrends,
-    enabled: telegramOk && !loading,
+    // Telegram cron-job.org uzerinden; tarayici acikken cift mesaj olmasin
+    enabled: false,
   });
 
   usePriceLevelAlerts({
@@ -367,7 +368,7 @@ export default function DashboardClient({ username }: { username: string }) {
     globalNews,
     prices,
     sectorTrends,
-    enabled: telegramOk && !loading,
+    enabled: false,
   });
 
   useTradeLevelSync({

@@ -21,15 +21,16 @@ import {
   sanitizeWatchlist,
 } from "@/lib/watchlist";
 import {
-  loadCronTelegramState,
+  loadLastScanSignals,
   loadCronWatchlistOverride,
   loadCronPriceAlertState,
   loadTradeLevelsCache,
-  saveCronTelegramState,
+  saveLastScanSignals,
   saveCronPriceAlertState,
   saveCronHeartbeat,
   upsertTradeLevelsCache,
 } from "@/lib/cron/telegram-state";
+import { shouldSendSignalTelegram } from "@/lib/cron/signal-notify";
 
 const PARALLEL_BATCH = 5;
 
@@ -72,15 +73,22 @@ async function mapInBatches<T, R>(
 
 async function runKapChecks(symbols: string[]): Promise<number> {
   let sent = 0;
+  const MAX_KAP_PER_RUN = 2;
 
-  await mapInBatches(symbols, PARALLEL_BATCH, async (symbol) => {
+  for (const symbol of symbols) {
+    if (sent >= MAX_KAP_PER_RUN) break;
+
     const items = await fetchKapDisclosures(symbol);
-    if (items.length === 0) return;
+    if (items.length === 0) continue;
 
     await seedKapSeen(symbol, items);
-    const result = await processKapAlerts(symbol, items);
+    const result = await processKapAlerts(
+      symbol,
+      items,
+      MAX_KAP_PER_RUN - sent
+    );
     sent += result.sent;
-  });
+  }
 
   return sent;
 }
@@ -212,7 +220,8 @@ export async function runTelegramCronJob(): Promise<CronTelegramResult> {
 
   const sectorTrends = computeSectorTrends(prices, {});
 
-  const state = await loadCronTelegramState();
+  const lastScan = await loadLastScanSignals();
+  const nextScan = { ...lastScan };
   let alertsSent = 0;
   const processed: string[] = [];
   const skipped: string[] = [];
@@ -243,21 +252,11 @@ export async function runTelegramCronJob(): Promise<CronTelegramResult> {
       sectorTrends
     );
 
-    const isStrong =
-      combined.signalEn === "STRONG BUY" ||
-      combined.signalEn === "STRONG SELL";
+    const previous = lastScan[symbol];
+    const current = combined.signalEn;
+    nextScan[symbol] = current;
 
-    if (!isStrong) {
-      if (
-        state[symbol] === "STRONG BUY" ||
-        state[symbol] === "STRONG SELL"
-      ) {
-        state[symbol] = combined.signalEn;
-      }
-      continue;
-    }
-
-    if (state[symbol] === combined.signalEn) {
+    if (!shouldSendSignalTelegram(previous, current)) {
       skipped.push(symbol);
       continue;
     }
@@ -271,14 +270,13 @@ export async function runTelegramCronJob(): Promise<CronTelegramResult> {
     });
 
     if (result.ok) {
-      state[symbol] = combined.signalEn;
       alertsSent++;
     } else {
       skipped.push(symbol);
     }
   }
 
-  await saveCronTelegramState(state);
+  await saveLastScanSignals(nextScan);
 
   const quoteMap = Object.fromEntries(
     symbols.map((symbol) => [symbol, { price: quotes[symbol]?.price ?? null }])

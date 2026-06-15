@@ -10,7 +10,8 @@ const MAX_SEEN_PER_SYMBOL = 40;
 
 export async function processKapAlerts(
   symbol: string,
-  items: KapDisclosure[]
+  items: KapDisclosure[],
+  maxToSend = 1
 ): Promise<{ sent: number; newItems: KapDisclosure[] }> {
   if (items.length === 0) {
     return { sent: 0, newItems: [] };
@@ -26,7 +27,7 @@ export async function processKapAlerts(
   }
 
   let sent = 0;
-  for (const item of newItems.slice(0, 3)) {
+  for (const item of newItems.slice(0, Math.max(1, maxToSend))) {
     const prefix = item.categoryLabel ? `[${item.categoryLabel}] ` : "";
     const result = await sendTelegramKapAlert({
       symbol,

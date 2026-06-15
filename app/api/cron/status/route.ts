@@ -52,7 +52,7 @@ export async function GET() {
     storage: getDbMode(),
     tursoConfigured: isTursoConfigured(),
     setupHint:
-      "Tum izleme listesi her calismada taranir. cron-job.org: onerilen 5 dk. Veriler SQLite DB'de kalici.",
+      "Her 5 dk taranir; Telegram yalnizca sinyal degisince (GUCULU AL/SAT) ve yeni KAP/SL-TP icin gider.",
   });
 }
 

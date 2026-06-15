@@ -92,6 +92,10 @@ export default function CronStatusBadge({
           </li>
           <li>Schedule: Every 5 minutes (onerilen) · Method: GET</li>
           <li>
+            Telegram yalnizca <strong>degisiklik</strong> olunca gider: GUCULU
+            AL/SAT, yeni KAP, SL/TP tetiklenmesi
+          </li>
+          <li>
             <strong>Yontem A — Header (onerilen):</strong>
             <br />
             Name: <code>Authorization</code>
