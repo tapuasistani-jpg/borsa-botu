@@ -4,6 +4,8 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "re
 import {
   calcPnL,
   calcPortfolioTotals,
+  formatMoneyTL,
+  formatSignedMoneyTL,
   loadPortfolio,
   newPortfolioId,
   savePortfolio,
@@ -245,88 +247,43 @@ export default function PortfolioPanel({ prices, watchlist }: PortfolioPanelProp
               </tbody>
               {items.length > 0 && (
                 <tfoot>
-                  <tr className="portfolio-tfoot">
-                    <td colSpan={2} className="cell-bold">
-                      Toplam
+                  <tr>
+                    <td colSpan={7} className="portfolio-total-cell">
+                      <div className="portfolio-total-panel">
+                        <div className="portfolio-total-panel-item">
+                          <span>Toplam yatirim</span>
+                          <strong>{formatMoneyTL(totals.totalCost)}</strong>
+                        </div>
+                        <div className="portfolio-total-panel-item">
+                          <span>Guncel deger</span>
+                          <strong>
+                            {totals.totalValue > 0
+                              ? formatMoneyTL(totals.totalValue)
+                              : "—"}
+                          </strong>
+                        </div>
+                        <div className={`portfolio-total-panel-item ${pnlClass}`}>
+                          <span>Kar / zarar</span>
+                          <strong>
+                            {totals.pnlTl !== null
+                              ? formatSignedMoneyTL(totals.pnlTl)
+                              : "—"}
+                          </strong>
+                        </div>
+                        <div className={`portfolio-total-panel-item ${pnlClass}`}>
+                          <span>K/Z yuzdesi</span>
+                          <strong>
+                            {totals.pnlPercent !== null
+                              ? `${totals.pnlPercent >= 0 ? "+" : ""}${totals.pnlPercent.toFixed(2)}%`
+                              : "—"}
+                          </strong>
+                        </div>
+                      </div>
                     </td>
-                    <td>
-                      <span className="portfolio-foot-label">Yatirim</span>
-                      {totals.totalCost.toLocaleString("tr-TR", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}{" "}
-                      TL
-                    </td>
-                    <td>
-                      <span className="portfolio-foot-label">Guncel deger</span>
-                      {totals.totalValue > 0
-                        ? `${totals.totalValue.toLocaleString("tr-TR", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })} TL`
-                        : "—"}
-                    </td>
-                    <td className={pnlClass}>
-                      {totals.pnlTl !== null
-                        ? `${totals.pnlTl >= 0 ? "+" : ""}${totals.pnlTl.toLocaleString("tr-TR", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })} TL`
-                        : "—"}
-                    </td>
-                    <td className={pnlClass}>
-                      {totals.pnlPercent !== null
-                        ? `${totals.pnlPercent >= 0 ? "+" : ""}${totals.pnlPercent.toFixed(2)}%`
-                        : "—"}
-                    </td>
-                    <td></td>
                   </tr>
                 </tfoot>
               )}
             </table>
-
-            <div className="portfolio-summary">
-              <div className="portfolio-summary-item">
-                <span className="portfolio-summary-label">Toplam yatirim</span>
-                <strong>
-                  {totals.totalCost.toLocaleString("tr-TR", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}{" "}
-                  TL
-                </strong>
-              </div>
-              <div className="portfolio-summary-item">
-                <span className="portfolio-summary-label">Guncel deger</span>
-                <strong>
-                  {totals.totalValue > 0
-                    ? `${totals.totalValue.toLocaleString("tr-TR", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })} TL`
-                    : "—"}
-                </strong>
-              </div>
-              <div className={`portfolio-summary-item ${pnlClass}`}>
-                <span className="portfolio-summary-label">Kar / zarar</span>
-                <strong>
-                  {totals.pnlTl !== null
-                    ? `${totals.pnlTl >= 0 ? "+" : ""}${totals.pnlTl.toLocaleString("tr-TR", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })} TL`
-                    : "—"}
-                </strong>
-              </div>
-              <div className={`portfolio-summary-item ${pnlClass}`}>
-                <span className="portfolio-summary-label">K/Z yuzdesi</span>
-                <strong>
-                  {totals.pnlPercent !== null
-                    ? `${totals.pnlPercent >= 0 ? "+" : ""}${totals.pnlPercent.toFixed(2)}%`
-                    : "—"}
-                </strong>
-              </div>
-            </div>
           </div>
         )}
         <p className="panel-note">

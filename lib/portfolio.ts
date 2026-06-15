@@ -91,6 +91,18 @@ export function calcPortfolioTotals(
   };
 }
 
+export function formatMoneyTL(amount: number): string {
+  return `${Math.abs(amount).toLocaleString("tr-TR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })} TL`;
+}
+
+export function formatSignedMoneyTL(amount: number): string {
+  const sign = amount >= 0 ? "+" : "-";
+  return `${sign}${formatMoneyTL(amount)}`;
+}
+
 export function newPortfolioId(): string {
   return `p_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
