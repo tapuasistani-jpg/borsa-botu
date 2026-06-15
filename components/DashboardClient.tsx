@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import StockCard from "@/components/StockCard";
 import NewsBanner from "@/components/NewsBanner";
 import PortfolioPanel from "@/components/PortfolioPanel";
+import PaperTradingPanel from "@/components/PaperTradingPanel";
 import TradeJournalPanel from "@/components/TradeJournalPanel";
 import BacktestPanel from "@/components/BacktestPanel";
 import MarketOverviewPanel from "@/components/MarketOverviewPanel";
@@ -468,6 +469,7 @@ export default function DashboardClient({ username }: { username: string }) {
       </div>
 
       <div className="tools-row">
+        <PaperTradingPanel prices={prices} />
         <PortfolioPanel prices={prices} watchlist={watchlist} />
         <TradeJournalPanel prices={prices} watchlist={watchlist} />
         <BacktestPanel watchlist={watchlist} />

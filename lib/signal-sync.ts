@@ -10,6 +10,10 @@ import {
   saveSignalRecords,
   saveSignalTrackState,
 } from "@/lib/db/signal-db";
+import {
+  applyPaperTradesFromSync,
+  type PaperSignalEvent,
+} from "@/lib/paper-trading";
 
 const ACTIONABLE = new Set([
   "STRONG BUY",
@@ -123,11 +127,14 @@ export async function syncSignals(
   records = evaluateRecords(records, prices);
 
   const state = await loadSignalTrackState();
+  const paperEvents: PaperSignalEvent[] = [];
 
   for (const entry of entries) {
     const { symbol, signalEn, price } = entry;
     if (!ACTIONABLE.has(signalEn) || price === null || price <= 0) continue;
     if (state[symbol] === signalEn) continue;
+
+    const previousSignal = state[symbol];
 
     records.push({
       id: `${symbol}-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
@@ -142,10 +149,21 @@ export async function syncSignals(
       technicalReason: entry.technicalReason,
     });
     state[symbol] = signalEn;
+
+    paperEvents.push({
+      symbol,
+      signalEn,
+      signalTr: entry.signalTr,
+      price,
+      previousSignal,
+      reason: entry.reason,
+    });
   }
 
   await saveSignalRecords(records);
   await saveSignalTrackState(state);
+
+  await applyPaperTradesFromSync(paperEvents).catch(() => {});
 
   const score = computeScore(records);
   return { records, score };

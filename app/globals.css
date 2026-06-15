@@ -2192,3 +2192,70 @@ input {
     max-width: 160px;
   }
 }
+
+/* Paper trading */
+.paper-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.paper-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.paper-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.paper-stat {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.55rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.paper-stat strong {
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
+.paper-subtitle {
+  font-size: 0.8125rem;
+  margin: 0.75rem 0 0.4rem;
+  color: var(--text-muted);
+}
+
+.paper-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
+
+.paper-list li {
+  padding: 0.25rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.paper-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}

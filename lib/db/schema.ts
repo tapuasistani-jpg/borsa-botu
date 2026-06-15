@@ -44,6 +44,33 @@ export async function initSchema(db: Client): Promise<void> {
     )`,
     `CREATE INDEX IF NOT EXISTS idx_signal_ts ON signal_records(timestamp DESC)`,
     `CREATE INDEX IF NOT EXISTS idx_journal_created ON trade_journal(created_at DESC)`,
+    `CREATE TABLE IF NOT EXISTS paper_account (
+      id TEXT PRIMARY KEY DEFAULT 'default',
+      cash REAL NOT NULL,
+      initial_cash REAL NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      updated_at TEXT NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS paper_positions (
+      symbol TEXT PRIMARY KEY,
+      quantity REAL NOT NULL,
+      avg_price REAL NOT NULL,
+      updated_at TEXT NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS paper_trades (
+      id TEXT PRIMARY KEY,
+      symbol TEXT NOT NULL,
+      side TEXT NOT NULL,
+      quantity REAL NOT NULL,
+      price REAL NOT NULL,
+      total REAL NOT NULL,
+      commission REAL NOT NULL,
+      signal_en TEXT,
+      signal_tr TEXT,
+      reason TEXT,
+      created_at TEXT NOT NULL
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_paper_trades_created ON paper_trades(created_at DESC)`,
   ];
 
   for (const sql of statements) {

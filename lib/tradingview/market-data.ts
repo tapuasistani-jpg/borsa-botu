@@ -63,20 +63,20 @@ export async function fetchLiveQuotes(
   return result;
 }
 
-/** Gunluk mum: Midas birincil, Yahoo yedek. */
+/** Gunluk mum: Yahoo birincil (gercek OHLC), Midas yedek. */
 export async function fetchDailyOhlc(
   symbol: string,
   candleCount = 100
 ): Promise<{ candles: OhlcCandle[]; source: PriceSource }> {
   try {
-    const candles = await fetchMidasDailyOhlc(symbol, candleCount);
-    return { candles, source: "midas" };
-  } catch (error) {
-    console.warn(
-      `Midas mum (${symbol}):`,
-      error instanceof Error ? error.message : error
-    );
     const candles = await fetchYahooDailyOhlc(symbol, candleCount);
     return { candles, source: "yahoo" };
+  } catch (error) {
+    console.warn(
+      `Yahoo mum (${symbol}):`,
+      error instanceof Error ? error.message : error
+    );
+    const candles = await fetchMidasDailyOhlc(symbol, candleCount);
+    return { candles, source: "midas" };
   }
 }

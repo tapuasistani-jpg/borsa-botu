@@ -18,3 +18,14 @@ export const MIN_DAILY_VOLUME = 750_000;
 
 /** Dusuk hacim ceza puani (AL -> BEKLE kaydirma) */
 export const LOW_VOLUME_SCORE_PENALTY = 2;
+
+/** Paper trading — sanal portfoy */
+export const PAPER_INITIAL_CASH = 100_000;
+export const PAPER_TRADE_SIZE_TL = 15_000;
+export const PAPER_RISKY_TRADE_SIZE_TL = 8_000;
+
+export function isPaperTradingEnabled(): boolean {
+  const v = process.env.PAPER_TRADING?.trim().toLowerCase();
+  if (v === "false" || v === "0") return false;
+  return true;
+}
