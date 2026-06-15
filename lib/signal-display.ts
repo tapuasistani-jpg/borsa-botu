@@ -13,9 +13,14 @@ export function shouldPulseSignal(signalEn: string): boolean {
   return (
     signalEn === "STRONG BUY" ||
     signalEn === "BUY" ||
+    signalEn === "RISKY BUY" ||
     signalEn === "STRONG SELL" ||
     signalEn === "SELL"
   );
+}
+
+export function isStrongSignal(signalEn: string): boolean {
+  return signalEn === "STRONG BUY" || signalEn === "STRONG SELL";
 }
 
 export function buildTaSummary(analysis: StockAnalysis | null): string {
@@ -33,21 +38,28 @@ export function buildTaSummary(analysis: StockAnalysis | null): string {
   ].join(" · ");
 }
 
-export function stockCardClass(tone: SignalTone): string {
-  if (tone === "buy") return "stock-card stock-card-buy";
-  if (tone === "sell") return "stock-card stock-card-sell";
-  if (tone === "risky") return "stock-card stock-card-risky";
-  return "stock-card";
+export function stockCardClass(tone: SignalTone, signalEn: string): string {
+  const parts = ["stock-card"];
+  if (tone === "buy") parts.push("stock-card-buy");
+  else if (tone === "sell") parts.push("stock-card-sell");
+  else if (tone === "risky") parts.push("stock-card-risky");
+
+  if (shouldPulseSignal(signalEn)) parts.push("stock-card-action");
+  if (isStrongSignal(signalEn)) parts.push("stock-card-strong");
+
+  return parts.join(" ");
 }
 
-export function signalStripClass(tone: SignalTone, pulse: boolean): string {
-  const base =
-    tone === "buy"
-      ? "signal-strip signal-strip-buy"
-      : tone === "sell"
-        ? "signal-strip signal-strip-sell"
-        : tone === "risky"
-          ? "signal-strip signal-strip-risky"
-          : "signal-strip signal-strip-hold";
-  return pulse ? `${base} signal-pulse` : base;
+export function signalStripClass(tone: SignalTone, signalEn: string): string {
+  const parts = ["signal-strip"];
+
+  if (tone === "buy") parts.push("signal-strip-buy");
+  else if (tone === "sell") parts.push("signal-strip-sell");
+  else if (tone === "risky") parts.push("signal-strip-risky");
+  else parts.push("signal-strip-hold");
+
+  if (shouldPulseSignal(signalEn)) parts.push("signal-pulse");
+  if (isStrongSignal(signalEn)) parts.push("signal-pulse-strong");
+
+  return parts.join(" ");
 }

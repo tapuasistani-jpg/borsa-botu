@@ -11,9 +11,7 @@ import type { Bist100Comparison } from "@/lib/bist100";
 import type { SectorId, SectorTrendInfo } from "@/lib/sectors";
 import TradingViewWidget from "@/components/TradingViewWidget";
 import {
-  buildTaSummary,
   getSignalTone,
-  shouldPulseSignal,
   signalStripClass,
   stockCardClass,
 } from "@/lib/signal-display";
@@ -75,12 +73,17 @@ export default function StockCard({
   const [showChart, setShowChart] = useState(false);
 
   const tone = getSignalTone(combined.signalEn);
-  const pulse = shouldPulseSignal(combined.signalEn);
-  const stripClass = signalStripClass(tone, pulse);
+  const stripClass = signalStripClass(tone, combined.signalEn);
+  const isBuy = tone === "buy" || tone === "risky";
+  const isSell = tone === "sell";
 
   return (
-    <article className={stockCardClass(tone)}>
+    <article className={stockCardClass(tone, combined.signalEn)}>
       <div className={stripClass}>
+        <span
+          className={`signal-strip-dot ${isBuy ? "dot-buy" : isSell ? "dot-sell" : "dot-hold"}`}
+          aria-hidden
+        />
         <span className="signal-strip-label">{combined.signalTr}</span>
         <span className="signal-strip-en">({combined.signalEn})</span>
       </div>
