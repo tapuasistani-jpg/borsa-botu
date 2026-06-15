@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import {
   calcPnL,
   loadPortfolio,
@@ -19,14 +19,77 @@ export default function PortfolioPanel({ prices, watchlist }: PortfolioPanelProp
   const [symbol, setSymbol] = useState("THYAO");
   const [quantity, setQuantity] = useState("");
   const [buyPrice, setBuyPrice] = useState("");
+  const [syncNote, setSyncNote] = useState("");
+  const [loading, setLoading] = useState(true);
+  const syncedRef = useRef(false);
 
-  useEffect(() => {
-    setItems(loadPortfolio());
+  const syncToServer = useCallback(async (next: PortfolioItem[]) => {
+    const res = await fetch("/api/portfolio", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: next }),
+    });
+    if (!res.ok) throw new Error("sync failed");
   }, []);
 
-  function persist(next: PortfolioItem[]) {
+  useEffect(() => {
+    let cancelled = false;
+
+    async function init() {
+      try {
+        const res = await fetch("/api/portfolio");
+        if (res.status === 401) return;
+
+        const local = loadPortfolio();
+
+        if (res.ok) {
+          const data = await res.json();
+          const serverItems = (data.items ?? []) as PortfolioItem[];
+
+          if (serverItems.length > 0) {
+            if (!cancelled) {
+              setItems(serverItems);
+              savePortfolio(serverItems);
+              setSyncNote("Hesap portfoyu yuklendi (tum cihazlarda ayni).");
+            }
+          } else if (local.length > 0 && !syncedRef.current) {
+            syncedRef.current = true;
+            await syncToServer(local);
+            if (!cancelled) {
+              setItems(local);
+              setSyncNote("Yerel portfoy sunucuya aktarildi.");
+            }
+          } else if (!cancelled) {
+            setItems(local);
+          }
+        } else if (!cancelled) {
+          setItems(local);
+        }
+      } catch {
+        if (!cancelled) {
+          setItems(loadPortfolio());
+          setSyncNote("Sunucu senkronu basarisiz — yerel veri kullaniliyor.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    init();
+    return () => {
+      cancelled = true;
+    };
+  }, [syncToServer]);
+
+  async function persist(next: PortfolioItem[]) {
     setItems(next);
     savePortfolio(next);
+    try {
+      await syncToServer(next);
+      setSyncNote("Kaydedildi · tum cihazlarda guncel.");
+    } catch {
+      setSyncNote("Yerel kayit OK — sunucu senkronu basarisiz.");
+    }
   }
 
   function handleAdd(e: FormEvent) {
@@ -35,7 +98,7 @@ export default function PortfolioPanel({ prices, watchlist }: PortfolioPanelProp
     const price = parseFloat(buyPrice);
     if (!qty || qty <= 0 || !price || price <= 0) return;
 
-    persist([
+    void persist([
       ...items,
       {
         id: newPortfolioId(),
@@ -49,7 +112,7 @@ export default function PortfolioPanel({ prices, watchlist }: PortfolioPanelProp
   }
 
   function handleDelete(id: string) {
-    persist(items.filter((i) => i.id !== id));
+    void persist(items.filter((i) => i.id !== id));
   }
 
   function getLivePrice(sym: string) {
@@ -95,16 +158,22 @@ export default function PortfolioPanel({ prices, watchlist }: PortfolioPanelProp
             className="portfolio-input"
             required
           />
-          <button type="submit" className="btn-primary btn-sm">
+          <button type="submit" className="btn-primary btn-sm" disabled={loading}>
             Ekle
           </button>
         </form>
 
-        {items.length === 0 ? (
+        {loading && (
+          <p className="panel-empty">Portfoy senkron yukleniyor...</p>
+        )}
+
+        {!loading && items.length === 0 && (
           <p className="panel-empty">
             Henuz pozisyon yok. Hisse adedi ve alis fiyatini yukaridan ekle.
           </p>
-        ) : (
+        )}
+
+        {!loading && items.length > 0 && (
           <div className="table-wrap">
             <table className="data-table">
               <thead>
@@ -199,7 +268,8 @@ export default function PortfolioPanel({ prices, watchlist }: PortfolioPanelProp
           </div>
         )}
         <p className="panel-note">
-          Veriler tarayicinda saklanir (localStorage). Canli fiyat 5 sn&apos;de bir guncellenir.
+          {syncNote ||
+            "Portfoy hesabinla senkron · farkli PC/telefondan girince ayni liste gelir."}
         </p>
       </div>
     </section>

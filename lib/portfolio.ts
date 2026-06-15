@@ -38,3 +38,35 @@ export function calcPnL(
 export function newPortfolioId(): string {
   return `p_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
+
+const SYMBOL_RE = /^[A-Z0-9]{3,6}$/;
+
+export function sanitizePortfolio(raw: unknown[]): PortfolioItem[] {
+  const result: PortfolioItem[] = [];
+
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object") continue;
+    const row = entry as Record<string, unknown>;
+    const symbol = String(row.symbol ?? "")
+      .trim()
+      .toUpperCase();
+    const quantity = Number(row.quantity);
+    const buyPrice = Number(row.buyPrice);
+
+    if (!SYMBOL_RE.test(symbol)) continue;
+    if (!Number.isFinite(quantity) || quantity <= 0) continue;
+    if (!Number.isFinite(buyPrice) || buyPrice <= 0) continue;
+
+    result.push({
+      id:
+        typeof row.id === "string" && row.id.trim()
+          ? row.id.trim()
+          : newPortfolioId(),
+      symbol,
+      quantity,
+      buyPrice,
+    });
+  }
+
+  return result;
+}

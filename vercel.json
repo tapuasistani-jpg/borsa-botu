@@ -14,6 +14,7 @@
     "app/api/cron/status/route.ts": { "maxDuration": 10 },
     "app/api/kap/route.ts": { "maxDuration": 10 },
     "app/api/macro/route.ts": { "maxDuration": 10 },
+    "app/api/portfolio/route.ts": { "maxDuration": 10 },
     "app/api/bist100/route.ts": { "maxDuration": 10 }
   }
 }
