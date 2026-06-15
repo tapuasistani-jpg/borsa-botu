@@ -27,11 +27,23 @@ export async function GET(request: Request) {
       symbol,
       price: quotes[symbol]?.price ?? null,
       changePercent: quotes[symbol]?.changePercent,
+      source: quotes[symbol]?.source,
     }));
+
+    const sources = new Set(
+      prices.map((p) => p.source).filter(Boolean)
+    );
+    const priceSource =
+      sources.size === 0
+        ? undefined
+        : sources.size === 1
+          ? [...sources][0]
+          : "mixed";
 
     return NextResponse.json({
       prices,
       symbols,
+      priceSource,
       updatedAt: new Date().toISOString(),
     });
   } catch (error) {

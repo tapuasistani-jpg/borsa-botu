@@ -30,7 +30,7 @@ export function getMarketStatus(now = new Date()): MarketStatus {
   const isWeekday = !["Sat", "Sun"].includes(weekday);
   const openMinutes = 10 * 60;
   const closeMinutes = 18 * 60;
-  const dataDelayLabel = `Veri gecikmesi ~${DATA_DELAY_MINUTES} dk`;
+  const dataDelayLabel = `Fiyat: Midas BIST (~${DATA_DELAY_MINUTES} dk gecikme olabilir)`;
 
   if (!isWeekday) {
     return {

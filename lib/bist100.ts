@@ -1,4 +1,4 @@
-import { fetchYahooQuotes } from "./yahoo/market-data";
+import { fetchLiveQuotes } from "./tradingview/market-data";
 
 export const BIST100_SYMBOL = "XU100";
 
@@ -17,7 +17,7 @@ export interface Bist100Comparison {
 
 export async function fetchBist100Quote(): Promise<Bist100Quote | null> {
   try {
-    const quotes = await fetchYahooQuotes([BIST100_SYMBOL]);
+    const quotes = await fetchLiveQuotes([BIST100_SYMBOL]);
     const q = quotes[BIST100_SYMBOL];
     if (!q || typeof q.changePercent !== "number") {
       return null;
