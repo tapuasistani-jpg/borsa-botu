@@ -25,7 +25,7 @@ export default function ApiHealthBadge({ health }: ApiHealthBadgeProps) {
     <div className={`api-health-badge ${statusClass(health.overall)}`}>
       <span className="api-health-title">API Sagligi · {overallLabel}</span>
       <div className="api-health-rows">
-        {(["prices", "analysis", "news"] as const).map((key) => {
+        {(["prices", "analysis", "news", "kap"] as const).map((key) => {
           const slice = health[key];
           return (
             <span key={key} className={`api-health-row ${statusClass(slice.status)}`}>

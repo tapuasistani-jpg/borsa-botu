@@ -33,6 +33,8 @@ import {
   upsertTradeLevelsCache,
 } from "@/lib/cron/telegram-state";
 import { shouldSendSignalTelegram } from "@/lib/cron/signal-notify";
+import { getMarketStatus } from "@/lib/market-hours";
+import { fetchBist100Quote } from "@/lib/bist100";
 
 const PARALLEL_BATCH = 5;
 
@@ -44,6 +46,7 @@ export interface CronTelegramResult {
   priceAlertsSent: number;
   skipped: string[];
   symbolCount: number;
+  mode?: "full" | "lightweight";
   error?: string;
 }
 
@@ -151,6 +154,51 @@ async function scanAllSymbols(
   });
 }
 
+async function runLightweightCronJob(
+  symbols: string[]
+): Promise<CronTelegramResult> {
+  const quotes = await fetchLiveQuotes(symbols);
+  const prices = symbols.map((symbol) => ({
+    symbol,
+    price: quotes[symbol]?.price ?? null,
+  }));
+
+  try {
+    await syncSignals(
+      prices.map((p) => ({ symbol: p.symbol, price: p.price })),
+      []
+    );
+  } catch {
+    // Acik sinyalleri guncelle; hata olsa devam
+  }
+
+  const quoteMap = Object.fromEntries(
+    symbols.map((symbol) => [symbol, { price: quotes[symbol]?.price ?? null }])
+  );
+  const priceAlertsSent = await runPriceLevelChecks(symbols, quoteMap);
+
+  await saveCronHeartbeat({
+    lastRunAt: new Date().toISOString(),
+    alertsSent: 0,
+    kapAlertsSent: 0,
+    priceAlertsSent,
+    processed: symbols,
+    ok: true,
+    mode: "lightweight",
+  });
+
+  return {
+    ok: true,
+    processed: symbols,
+    alertsSent: 0,
+    kapAlertsSent: 0,
+    priceAlertsSent,
+    skipped: [],
+    symbolCount: symbols.length,
+    mode: "lightweight",
+  };
+}
+
 export async function runTelegramCronJob(): Promise<CronTelegramResult> {
   const startedAt = new Date().toISOString();
 
@@ -202,10 +250,18 @@ export async function runTelegramCronJob(): Promise<CronTelegramResult> {
     };
   }
 
-  const [quotes, globalNewsResult] = await Promise.all([
+  const market = getMarketStatus();
+  if (market.session !== "OPEN") {
+    return runLightweightCronJob(symbols);
+  }
+
+  const [quotes, globalNewsResult, bist100Quote] = await Promise.all([
     fetchLiveQuotes(symbols),
     runGlobalNews(),
+    fetchBist100Quote(),
   ]);
+
+  const bist100Change = bist100Quote?.changePercent ?? null;
 
   const [kapAlertsSent, scanResults] = await Promise.all([
     runKapChecks(symbols),
@@ -256,7 +312,8 @@ export async function runTelegramCronJob(): Promise<CronTelegramResult> {
       stockNews,
       globalNews,
       price,
-      sectorTrends
+      sectorTrends,
+      { bist100ChangePercent: bist100Change }
     );
 
     const previous = lastScan[symbol];
@@ -295,7 +352,8 @@ export async function runTelegramCronJob(): Promise<CronTelegramResult> {
       stockNews,
       globalNews,
       price,
-      sectorTrends
+      sectorTrends,
+      { bist100ChangePercent: bist100Change }
     );
     syncEntries.push({
       symbol,
@@ -329,6 +387,7 @@ export async function runTelegramCronJob(): Promise<CronTelegramResult> {
     priceAlertsSent,
     processed,
     ok: true,
+    mode: "full",
   });
 
   return {
@@ -339,5 +398,6 @@ export async function runTelegramCronJob(): Promise<CronTelegramResult> {
     priceAlertsSent,
     skipped,
     symbolCount: symbols.length,
+    mode: "full",
   };
 }

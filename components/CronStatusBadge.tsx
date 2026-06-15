@@ -5,13 +5,19 @@ interface CronStatusData {
   intervalMinutes: number;
   minutesSinceLastRun: number | null;
   lastRunAt: string | null;
+  lastRunMode?: "full" | "lightweight" | null;
   lastAlertsSent: number;
   lastKapAlertsSent: number;
   lastPriceAlertsSent: number;
   telegramConfigured: boolean;
   cronSecretConfigured: boolean;
   cronEndpoint: string;
+  watchdogEndpoint?: string;
   cronEndpointWithSecret?: string;
+  watchdogEndpointWithSecret?: string;
+  storage?: string;
+  tursoConfigured?: boolean;
+  telegramSignalMode?: string;
   setupHint: string;
 }
 
@@ -56,14 +62,25 @@ export default function CronStatusBadge({
         {data.minutesSinceLastRun !== null && (
           <span>({data.minutesSinceLastRun} dk once)</span>
         )}
+        {data.lastRunMode && (
+          <span>
+            · Mod: {data.lastRunMode === "lightweight" ? "Hafif" : "Tam tarama"}
+          </span>
+        )}
       </div>
 
       <div className="cron-counts">
         <span>Sinyal: {data.lastAlertsSent}</span>
         <span>KAP: {data.lastKapAlertsSent}</span>
         <span>SL/TP: {data.lastPriceAlertsSent}</span>
+        {data.storage && (
+          <span>DB: {data.tursoConfigured ? "Turso" : data.storage}</span>
+        )}
       </div>
 
+      {!data.tursoConfigured && (
+        <p className="cron-warn">Turso baglantisi yok — veri kaybolabilir.</p>
+      )}
       {!data.cronSecretConfigured && (
         <p className="cron-warn">
           CRON_SECRET Vercel&apos;de tanimli degil (Production env).
@@ -76,40 +93,28 @@ export default function CronStatusBadge({
       <p className="cron-warn cron-warn-info">{data.setupHint}</p>
 
       <details className="cron-setup">
-        <summary>cron-job.org kurulumu (401 cozumu)</summary>
+        <summary>cron-job.org kurulumu</summary>
         <ol>
           <li>
-            <strong>URL (preview degil, production):</strong>
+            <strong>Ana cron (5 dk):</strong>
             <br />
             <code>{data.cronEndpoint}</code>
           </li>
           <li>
-            Preview linki kullanma (
-            <code>*-projects.vercel.app</code> → 401 verir)
-          </li>
-          <li>
-            <strong>Tum izleme listesi</strong> her calismada taranir (rotasyon yok)
-          </li>
-          <li>Schedule: Every 5 minutes (onerilen) · Method: GET</li>
-          <li>
-            Telegram yalnizca <strong>degisiklik</strong> olunca gider: GUCULU
-            AL/SAT, yeni KAP, SL/TP tetiklenmesi
-          </li>
-          <li>
-            <strong>Yontem A — Header (onerilen):</strong>
+            <strong>Watchdog (10 dk — cron olum alarmi):</strong>
             <br />
-            Name: <code>Authorization</code>
-            <br />
-            Value: <code>Bearer .env.local icindeki CRON_SECRET</code>
+            <code>{data.watchdogEndpoint ?? "/api/cron/watchdog"}</code>
           </li>
+          <li>Method: GET · Header: Authorization Bearer CRON_SECRET</li>
           <li>
-            <strong>Yontem B — URL parametresi (header zor ise):</strong>
+            Telegram modu: <strong>{data.telegramSignalMode ?? "AL/SAT"}</strong>{" "}
+            (TELEGRAM_SIGNAL_MODE=strong ile sadece GUCULU)
+          </li>
+          <li>Piyasa kapali: hafif mod (SL/TP + skor guncelleme)</li>
+          <li>
+            <strong>URL alternatif:</strong>
             <br />
             <code>{data.cronEndpointWithSecret ?? `${data.cronEndpoint}?secret=...`}</code>
-          </li>
-          <li>
-            Vercel → Settings → Environment Variables →{" "}
-            <code>CRON_SECRET</code> (Production) → Redeploy
           </li>
           <li>Dashboard&apos;da Cron Senkron</li>
         </ol>

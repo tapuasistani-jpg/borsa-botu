@@ -16,7 +16,9 @@ export function getDbMode(): DbMode {
 
 function resolveDbUrl(): string {
   const turso = process.env.TURSO_DATABASE_URL?.trim();
-  if (turso) return turso;
+  if (turso) {
+    return turso.replace(/^libsql:\/\/libsql:\/\//, "libsql://");
+  }
 
   if (process.env.NODE_ENV !== "production") {
     const dir = path.join(process.cwd(), ".data");

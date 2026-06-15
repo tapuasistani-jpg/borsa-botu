@@ -51,6 +51,16 @@ export function getTelegramEnv() {
 /** Vercel build / runtime oncesi zorunlu degisken kontrolu */
 export function assertRequiredEnvForDeploy(): void {
   getAuthEnv();
+
+  if (process.env.VERCEL === "1") {
+    const tursoUrl = process.env.TURSO_DATABASE_URL?.trim();
+    const tursoToken = process.env.TURSO_AUTH_TOKEN?.trim();
+    if (!tursoUrl || !tursoToken) {
+      throw new Error(
+        "Production icin TURSO_DATABASE_URL ve TURSO_AUTH_TOKEN zorunlu. Vercel Environment Variables'a ekle."
+      );
+    }
+  }
 }
 
 /** Cookie guvenlik bayraklari */
@@ -72,5 +82,10 @@ export const VERCEL_ENV_KEYS = [
   "TELEGRAM_BOT_TOKEN",
   "TELEGRAM_CHAT_ID",
   "CRON_SECRET",
+  "TURSO_DATABASE_URL",
+  "TURSO_AUTH_TOKEN",
   "WATCHLIST_SYMBOLS",
+  "TELEGRAM_SIGNAL_MODE",
+  "CRON_INTERVAL_MINUTES",
+  "CRON_STALE_MINUTES",
 ] as const;

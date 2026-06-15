@@ -12,6 +12,7 @@ import {
   type SectorTrendInfo,
   type StockSectorInfo,
 } from "./sectors";
+import { applyMarketContextFilter } from "./market-context";
 import type { StockAnalysis } from "./stocks";
 import { calculateTradeLevels, type TradeLevels } from "./trade-levels";
 
@@ -22,13 +23,18 @@ export interface EnhancedSignal {
   sectorInfo: StockSectorInfo | null;
 }
 
+export interface EnhancedSignalOptions {
+  bist100ChangePercent?: number | null;
+}
+
 export function buildEnhancedSignal(
   symbol: string,
   analysis: StockAnalysis | null,
   stockNews: StockNewsResult | null,
   globalNews: GlobalNewsResult | null,
   price: number | null,
-  sectorTrends: Record<SectorId, SectorTrendInfo>
+  sectorTrends: Record<SectorId, SectorTrendInfo>,
+  options?: EnhancedSignalOptions
 ): EnhancedSignal {
   const tradeLevels =
     analysis && price !== null && price > 0
@@ -40,11 +46,16 @@ export function buildEnhancedSignal(
       ? calculateNetProfitPotential(price, tradeLevels.takeProfit)
       : null;
 
-  const combined = combineTaAndNews(analysis, stockNews, globalNews, {
+  const sectorInfo = getStockSectorInfo(symbol, sectorTrends);
+
+  const raw = combineTaAndNews(analysis, stockNews, globalNews, {
     riskReward,
   });
 
-  const sectorInfo = getStockSectorInfo(symbol, sectorTrends);
+  const combined = applyMarketContextFilter(raw, {
+    bist100ChangePercent: options?.bist100ChangePercent,
+    sectorInfo,
+  });
 
   return { combined, tradeLevels, riskReward, sectorInfo };
 }

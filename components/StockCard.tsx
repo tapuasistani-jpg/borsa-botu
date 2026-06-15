@@ -25,6 +25,7 @@ interface StockCardProps {
   globalNews: GlobalNewsResult | null;
   sectorTrends: Record<SectorId, SectorTrendInfo>;
   bist100Comparison?: Bist100Comparison | null;
+  bist100ChangePercent?: number | null;
 }
 
 function scoreLabel(score: number) {
@@ -55,6 +56,7 @@ export default function StockCard({
   globalNews,
   sectorTrends,
   bist100Comparison,
+  bist100ChangePercent = null,
 }: StockCardProps) {
   const { combined, tradeLevels, riskReward, sectorInfo } = buildEnhancedSignal(
     symbol,
@@ -62,7 +64,8 @@ export default function StockCard({
     stockNews,
     globalNews,
     price,
-    sectorTrends
+    sectorTrends,
+    { bist100ChangePercent }
   );
 
   const taSignal = analysis

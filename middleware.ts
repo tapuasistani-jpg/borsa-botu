@@ -2,7 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { COOKIE_NAME } from "@/lib/session";
 
-const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/cron/telegram"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/api/auth/login",
+  "/api/cron/telegram",
+  "/api/cron/watchdog",
+];
 function getJwtSecret(): Uint8Array | null {
   const secret = process.env.JWT_SECRET?.trim();
   if (!secret || secret.length < 32) return null;

@@ -19,6 +19,7 @@ export interface CronHeartbeat {
   processed: string[];
   ok: boolean;
   error?: string;
+  mode?: "full" | "lightweight";
 }
 
 export interface TradeLevelCacheEntry {

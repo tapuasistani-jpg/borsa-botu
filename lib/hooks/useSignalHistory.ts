@@ -2,14 +2,6 @@
 
 import { useEffect, useState } from "react";
 import type { SignalRecord, SuccessScore } from "@/lib/signal-history";
-import {
-  evaluateOpenSignals,
-  getSignalLog,
-  getSuccessScore,
-  loadSignalState,
-  recordSignalIfNew,
-  saveSignalState,
-} from "@/lib/signal-history";
 import { buildTaSummary } from "@/lib/signal-display";
 import { buildEnhancedSignal } from "@/lib/signal-engine";
 import type {
@@ -26,6 +18,7 @@ interface UseSignalHistoryProps {
   globalNews: GlobalNewsResult | null;
   prices: { symbol: string; price: number | null }[];
   sectorTrends: Record<SectorId, SectorTrendInfo>;
+  bist100ChangePercent?: number | null;
   enabled: boolean;
 }
 
@@ -48,10 +41,12 @@ export function useSignalHistory({
   globalNews,
   prices,
   sectorTrends,
+  bist100ChangePercent = null,
   enabled,
 }: UseSignalHistoryProps) {
   const [score, setScore] = useState<SuccessScore>(EMPTY_SCORE);
   const [records, setRecords] = useState<SignalRecord[]>([]);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!enabled || Object.keys(analysisMap).length === 0) return;
@@ -72,7 +67,8 @@ export function useSignalHistory({
           stockNewsMap[symbol] ?? null,
           globalNews,
           price,
-          sectorTrends
+          sectorTrends,
+          { bist100ChangePercent }
         );
 
         entries.push({
@@ -93,6 +89,7 @@ export function useSignalHistory({
           if (!cancelled && Array.isArray(getData.records)) {
             setScore(getData.score ?? EMPTY_SCORE);
             setRecords(sortRecords(getData.records));
+            setSyncError(null);
           }
         }
 
@@ -107,37 +104,23 @@ export function useSignalHistory({
           if (!cancelled) {
             setScore(data.score ?? EMPTY_SCORE);
             setRecords(sortRecords(data.records ?? []));
+            setSyncError(null);
           }
           return;
         }
+
+        const errData = await res.json().catch(() => ({}));
+        if (!cancelled) {
+          setSyncError(
+            typeof errData.error === "string"
+              ? errData.error
+              : "Sinyal senkronu basarisiz"
+          );
+        }
       } catch {
-        // localStorage yedek
-      }
-
-      evaluateOpenSignals(prices);
-      const state = loadSignalState();
-
-      for (const entry of entries) {
-        const next = recordSignalIfNew(
-          entry.symbol,
-          entry.signalEn,
-          entry.price,
-          state[entry.symbol],
-          {
-            signalTr: entry.signalTr,
-            reason: entry.reason,
-            taSummary: entry.taSummary,
-            technicalReason: entry.technicalReason,
-          }
-        );
-        if (next) state[entry.symbol] = next;
-      }
-
-      saveSignalState(state);
-      if (!cancelled) {
-        const localScore = getSuccessScore();
-        setScore(localScore);
-        setRecords(getSignalLog(30));
+        if (!cancelled) {
+          setSyncError("Sunucuya ulasilamadi — sinyal gecmisi guncellenemedi");
+        }
       }
     }
 
@@ -152,8 +135,9 @@ export function useSignalHistory({
     globalNews,
     prices,
     sectorTrends,
+    bist100ChangePercent,
     enabled,
   ]);
 
-  return { score, records };
+  return { score, records, syncError };
 }

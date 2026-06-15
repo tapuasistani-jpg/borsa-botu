@@ -5,6 +5,7 @@ import {
   upsertTradeLevelsCache,
 } from "@/lib/cron/telegram-state";
 import { isCronSecretConfigured } from "@/lib/cron/auth";
+import { getTelegramSignalModeLabel } from "@/lib/cron/signal-notify";
 import { isTelegramConfigured } from "@/lib/telegram/send";
 import { getDbMode, isTursoConfigured } from "@/lib/db/client";
 
@@ -36,23 +37,29 @@ export async function GET() {
   const productionUrl =
     process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://borsa-botu.vercel.app";
   const cronEndpoint = `${productionUrl}/api/cron/telegram`;
+  const watchdogEndpoint = `${productionUrl}/api/cron/watchdog`;
 
   return NextResponse.json({
     status,
     intervalMinutes: CRON_INTERVAL_MINUTES,
     minutesSinceLastRun,
     lastRunAt: heartbeat?.lastRunAt ?? null,
+    lastRunMode: heartbeat?.mode ?? null,
     lastAlertsSent: heartbeat?.alertsSent ?? 0,
     lastKapAlertsSent: heartbeat?.kapAlertsSent ?? 0,
     lastPriceAlertsSent: heartbeat?.priceAlertsSent ?? 0,
     telegramConfigured: isTelegramConfigured(),
     cronSecretConfigured: isCronSecretConfigured(),
     cronEndpoint,
+    watchdogEndpoint,
     cronEndpointWithSecret: `${cronEndpoint}?secret=CRON_SECRET_DEGERIN`,
+    watchdogEndpointWithSecret: `${watchdogEndpoint}?secret=CRON_SECRET_DEGERIN`,
     storage: getDbMode(),
     tursoConfigured: isTursoConfigured(),
-    setupHint:
-      "Her 5 dk taranir; Telegram yalnizca sinyal degisince (GUCULU AL/SAT) ve yeni KAP/SL-TP icin gider.",
+    telegramSignalMode: getTelegramSignalModeLabel(),
+    setupHint: isTursoConfigured()
+      ? `Turso aktif · Telegram: ${getTelegramSignalModeLabel()} · BIST100 filtresi acik · Watchdog: 10 dk'da bir ayarla.`
+      : "UYARI: Turso yok — veriler kaybolabilir. TURSO_DATABASE_URL ekle.",
   });
 }
 

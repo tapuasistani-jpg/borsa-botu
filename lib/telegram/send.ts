@@ -24,9 +24,13 @@ export async function sendTelegramAlert(
   const emoji =
     payload.signalEn === "STRONG BUY"
       ? "🟢"
-      : payload.signalEn === "STRONG SELL"
-        ? "🔴"
-        : "📊";
+      : payload.signalEn === "BUY" || payload.signalEn === "RISKY BUY"
+        ? payload.signalEn === "RISKY BUY"
+          ? "🟠"
+          : "🟢"
+        : payload.signalEn === "STRONG SELL" || payload.signalEn === "SELL"
+          ? "🔴"
+          : "📊";
 
   const priceText =
     payload.price !== null ? `${payload.price.toFixed(2)} TL` : "—";
@@ -112,6 +116,20 @@ export async function sendTelegramPriceAlert(
     ``,
     `_Borsa Botu · ${new Date().toLocaleString("tr-TR")}_`,
   ].join("\n");
+
+  return postTelegramMessage(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, text);
+}
+
+/** Sistem / cron uyari mesajlari */
+export async function sendTelegramSystemMessage(
+  text: string
+): Promise<{ ok: boolean; error?: string }> {
+  const { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, isConfigured } =
+    getTelegramEnv();
+
+  if (!isConfigured || !TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+    return { ok: false, error: "Telegram ayarlari eksik." };
+  }
 
   return postTelegramMessage(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, text);
 }

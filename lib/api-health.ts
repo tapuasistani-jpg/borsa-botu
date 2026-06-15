@@ -12,6 +12,7 @@ export interface ApiHealthState {
   prices: ApiHealthSlice;
   analysis: ApiHealthSlice;
   news: ApiHealthSlice;
+  kap: ApiHealthSlice;
 }
 
 export function createInitialHealth(): ApiHealthState {
@@ -20,6 +21,7 @@ export function createInitialHealth(): ApiHealthState {
     prices: { status: "warn", label: "Fiyat", lastUpdate: null },
     analysis: { status: "warn", label: "Analiz", lastUpdate: null },
     news: { status: "warn", label: "Haber", lastUpdate: null },
+    kap: { status: "warn", label: "KAP", lastUpdate: null },
   };
 }
 
@@ -31,7 +33,7 @@ function deriveOverall(slices: ApiHealthSlice[]): HealthStatus {
 
 export function markHealthSuccess(
   state: ApiHealthState,
-  key: "prices" | "analysis" | "news",
+  key: "prices" | "analysis" | "news" | "kap",
   updatedAt?: string
 ): ApiHealthState {
   const next = {
@@ -43,13 +45,18 @@ export function markHealthSuccess(
       message: undefined,
     },
   };
-  next.overall = deriveOverall([next.prices, next.analysis, next.news]);
+  next.overall = deriveOverall([
+    next.prices,
+    next.analysis,
+    next.news,
+    next.kap,
+  ]);
   return next;
 }
 
 export function markHealthError(
   state: ApiHealthState,
-  key: "prices" | "analysis" | "news",
+  key: "prices" | "analysis" | "news" | "kap",
   message: string
 ): ApiHealthState {
   const next = {
@@ -60,7 +67,12 @@ export function markHealthError(
       message,
     },
   };
-  next.overall = deriveOverall([next.prices, next.analysis, next.news]);
+  next.overall = deriveOverall([
+    next.prices,
+    next.analysis,
+    next.news,
+    next.kap,
+  ]);
   return next;
 }
 

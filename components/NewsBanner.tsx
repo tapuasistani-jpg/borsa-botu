@@ -24,7 +24,12 @@ export default function NewsBanner({
   if (!globalNews) return null;
 
   const time = updatedAt
-    ? new Date(updatedAt).toLocaleTimeString("tr-TR")
+    ? (() => {
+        const d = new Date(updatedAt);
+        return Number.isNaN(d.getTime())
+          ? updatedAt
+          : d.toLocaleTimeString("tr-TR");
+      })()
     : "—";
 
   return (

@@ -151,15 +151,25 @@ export default function DashboardClient({ username }: { username: string }) {
     if (watchlist.length === 0) {
       setKapFeeds({});
       setKapLoading(false);
+      setHealth((h) => markHealthSuccess(h, "kap"));
       return;
     }
     try {
       const res = await fetch(
         `/api/kap?symbols=${symbolsQuery(watchlist)}`
       );
-      if (!res.ok) return;
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setHealth((h) =>
+          markHealthError(h, "kap", data.error ?? "KAP feed hatasi")
+        );
+        return;
+      }
       const data = await res.json();
       setKapFeeds(data.feeds ?? {});
+      setHealth((h) => markHealthSuccess(h, "kap", data.updatedAt));
+    } catch {
+      setHealth((h) => markHealthError(h, "kap", "KAP baglantisi kurulamadi"));
     } finally {
       setKapLoading(false);
     }
@@ -177,34 +187,36 @@ export default function DashboardClient({ username }: { username: string }) {
   }, []);
 
   const fetchAnalysis = useCallback(async () => {
-    const map: Record<string, StockAnalysis> = {};
-    let lastUpdated: string | null = null;
-
-    for (let i = 0; i < watchlist.length; i += BATCH) {
-      const batch = watchlist.slice(i, i + BATCH);
-      const results = await Promise.all(
-        batch.map(async (symbol) => {
-          const res = await fetch(`/api/analysis?symbol=${symbol}`);
-          if (res.status === 401) {
-            router.push("/login");
-            return null;
-          }
-          if (!res.ok) return null;
-          const data = await res.json();
-          lastUpdated = data.updatedAt ?? lastUpdated;
-          const item = data.analysis?.[0];
-          if (item && !("error" in item)) return item as StockAnalysis;
-          return null;
-        })
-      );
-      results.forEach((item) => {
-        if (item) map[item.symbol] = item;
-      });
+    if (watchlist.length === 0) {
+      setAnalysisMap({});
+      return;
     }
 
+    const res = await fetch(
+      `/api/analysis?symbols=${symbolsQuery(watchlist)}`
+    );
+    if (res.status === 401) {
+      router.push("/login");
+      return;
+    }
+    if (!res.ok) {
+      const data = await res.json();
+      setHealth((h) =>
+        markHealthError(h, "analysis", data.error ?? "Analiz hatasi")
+      );
+      return;
+    }
+
+    const data = await res.json();
+    const map: Record<string, StockAnalysis> = {};
+    for (const item of data.analysis ?? []) {
+      if (item && !("error" in item)) {
+        map[item.symbol] = item as StockAnalysis;
+      }
+    }
     setAnalysisMap(map);
-    if (lastUpdated) {
-      setHealth((h) => markHealthSuccess(h, "analysis", lastUpdated!));
+    if (data.updatedAt) {
+      setHealth((h) => markHealthSuccess(h, "analysis", data.updatedAt));
     }
   }, [router, watchlist]);
 
@@ -247,7 +259,7 @@ export default function DashboardClient({ username }: { username: string }) {
     }
 
     setStockNewsMap(stocks);
-    setNewsUpdatedAt(new Date().toLocaleTimeString("tr-TR"));
+    setNewsUpdatedAt(new Date().toISOString());
   }, [router, watchlist]);
 
   useEffect(() => {
@@ -347,6 +359,7 @@ export default function DashboardClient({ username }: { username: string }) {
     globalNews,
     prices,
     sectorTrends,
+    bist100ChangePercent: bist100Change,
     enabled: !loading,
   });
 
@@ -479,6 +492,7 @@ export default function DashboardClient({ username }: { username: string }) {
                   p?.changePercent,
                   bist100Change
                 )}
+                bist100ChangePercent={bist100Change}
               />
             );
           })}
@@ -502,7 +516,7 @@ export default function DashboardClient({ username }: { username: string }) {
           <span className="legend-dot" style={{ background: "var(--red)" }} />
           SAT / GUCULU SAT
         </span>
-        <span>Cron 5dk · Tum liste · KAP · SL/TP · TradingView</span>
+        <span>Cron 5dk · BIST100 filtresi · KAP · SL/TP · Turso</span>
         <span className="legend-author">Emre ARSLAN</span>
       </footer>
     </main>
