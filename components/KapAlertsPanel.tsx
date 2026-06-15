@@ -39,6 +39,9 @@ export default function KapAlertsPanel({
           items.map((item) => ({ ...item, symbol }))
         )
         .sort((a, b) => {
+          if (Boolean(a.priority) !== Boolean(b.priority)) {
+            return Number(b.priority) - Number(a.priority);
+          }
           const ta = a.publishedAt ? Date.parse(a.publishedAt) : 0;
           const tb = b.publishedAt ? Date.parse(b.publishedAt) : 0;
           return tb - ta;
@@ -122,6 +125,13 @@ export default function KapAlertsPanel({
                   >
                     <div className="kap-item-top">
                       <span className="kap-symbol">{item.symbol}</span>
+                      {item.categoryLabel && (
+                        <span
+                          className={`kap-cat-badge ${item.priority ? "kap-cat-priority" : ""}`}
+                        >
+                          {item.categoryLabel}
+                        </span>
+                      )}
                       {isNew && <span className="kap-item-new-tag">Yeni</span>}
                       {item.publishedAt && (
                         <span className="kap-date">

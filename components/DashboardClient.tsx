@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import StockCard from "@/components/StockCard";
 import NewsBanner from "@/components/NewsBanner";
 import PortfolioPanel from "@/components/PortfolioPanel";
+import TradeJournalPanel from "@/components/TradeJournalPanel";
 import BacktestPanel from "@/components/BacktestPanel";
 import MarketOverviewPanel from "@/components/MarketOverviewPanel";
 import SuccessScoreBadge from "@/components/SuccessScoreBadge";
@@ -339,7 +340,7 @@ export default function DashboardClient({ username }: { username: string }) {
     [globalNews, prices, analysisMap, sectorTrends]
   );
 
-  const successScore = useSignalHistory({
+  const { score: successScore, records: signalRecords } = useSignalHistory({
     watchlist,
     analysisMap,
     stockNewsMap,
@@ -412,7 +413,7 @@ export default function DashboardClient({ username }: { username: string }) {
           </p>
         </div>
         <div className="header-actions">
-          <SuccessScoreBadge score={successScore} />
+          <SuccessScoreBadge score={successScore} records={signalRecords} />
           <span className="status-badge">
             <span className="status-dot" />
             {telegramOk ? "Telegram 7/24 (Cron)" : "Canli · Ucretsiz"}
@@ -454,6 +455,7 @@ export default function DashboardClient({ username }: { username: string }) {
 
       <div className="tools-row">
         <PortfolioPanel prices={prices} watchlist={watchlist} />
+        <TradeJournalPanel prices={prices} watchlist={watchlist} />
         <BacktestPanel watchlist={watchlist} />
       </div>
 

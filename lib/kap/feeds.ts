@@ -1,5 +1,6 @@
 import Parser from "rss-parser";
 import type { KapDisclosure } from "./types";
+import { classifyKapTitle } from "./classify";
 
 const parser = new Parser({
   timeout: 10000,
@@ -113,6 +114,16 @@ async function fetchKapDirect(symbol: string): Promise<KapDisclosure[]> {
   }
 }
 
+function withClassification(item: KapDisclosure): KapDisclosure {
+  const info = classifyKapTitle(item.title);
+  return {
+    ...item,
+    category: info.category,
+    categoryLabel: info.label,
+    priority: info.priority,
+  };
+}
+
 function dedupeItems(items: KapDisclosure[]): KapDisclosure[] {
   const seen = new Set<string>();
   return items.filter((item) => {
@@ -131,7 +142,7 @@ export async function fetchKapDisclosures(
     fetchGoogleKapRss(symbol),
   ]);
 
-  const merged = dedupeItems([...direct, ...rss]);
+  const merged = dedupeItems([...direct, ...rss].map(withClassification));
   return merged.slice(0, 10);
 }
 

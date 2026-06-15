@@ -1,4 +1,4 @@
-import { fetchMidasQuotes } from "../midas/market-data";
+import { fetchMidasDailyOhlc, fetchMidasQuotes } from "../midas/market-data";
 import {
   fetchYahooDailyOhlc,
   fetchYahooQuotes,
@@ -8,12 +8,11 @@ import {
 
 export type { OhlcCandle, QuoteData };
 
-export { fetchYahooDailyOhlc as fetchDailyOhlc };
-
 export type PriceSource = "midas" | "yahoo";
 
 export interface QuoteWithSource extends QuoteData {
   source: PriceSource;
+  volume?: number;
 }
 
 /** Midas (BIST referans) birincil; eksik semboller Yahoo ile tamamlanir. */
@@ -22,14 +21,11 @@ export async function fetchLiveQuotes(
 ): Promise<Record<string, QuoteWithSource>> {
   if (symbols.length === 0) return {};
 
-  let midasQuotes: Record<string, QuoteData> = {};
+  let midasQuotes: Record<string, QuoteData & { volume?: number }> = {};
   try {
     midasQuotes = await fetchMidasQuotes(symbols);
   } catch (error) {
-    console.warn(
-      "Midas fiyat:",
-      error instanceof Error ? error.message : error
-    );
+    console.warn("Midas fiyat:", error instanceof Error ? error.message : error);
   }
 
   const result: Record<string, QuoteWithSource> = {};
@@ -49,14 +45,10 @@ export async function fetchLiveQuotes(
       const yahooQuotes = await fetchYahooQuotes(missing);
       for (const symbol of missing) {
         const quote = yahooQuotes[symbol];
-        if (quote) {
-          result[symbol] = { ...quote, source: "yahoo" };
-        }
+        if (quote) result[symbol] = { ...quote, source: "yahoo" };
       }
     } catch (error) {
-      if (Object.keys(result).length === 0) {
-        throw error;
-      }
+      if (Object.keys(result).length === 0) throw error;
       console.warn(
         "Yahoo yedek fiyat:",
         error instanceof Error ? error.message : error
@@ -69,4 +61,22 @@ export async function fetchLiveQuotes(
   }
 
   return result;
+}
+
+/** Gunluk mum: Midas birincil, Yahoo yedek. */
+export async function fetchDailyOhlc(
+  symbol: string,
+  candleCount = 100
+): Promise<{ candles: OhlcCandle[]; source: PriceSource }> {
+  try {
+    const candles = await fetchMidasDailyOhlc(symbol, candleCount);
+    return { candles, source: "midas" };
+  } catch (error) {
+    console.warn(
+      `Midas mum (${symbol}):`,
+      error instanceof Error ? error.message : error
+    );
+    const candles = await fetchYahooDailyOhlc(symbol, candleCount);
+    return { candles, source: "yahoo" };
+  }
 }

@@ -1,13 +1,14 @@
-import fs from "fs";
-import path from "path";
+import { getJsonKv, setJsonKv } from "@/lib/db/kv";
 
-const STATE_FILE = path.join("/tmp", "borsa_cron_telegram_state.json");
-const ROTATION_FILE = path.join("/tmp", "borsa_cron_rotation.json");
-const WATCHLIST_FILE = path.join("/tmp", "borsa_cron_watchlist.json");
-const HEARTBEAT_FILE = path.join("/tmp", "borsa_cron_heartbeat.json");
-const KAP_SEEN_FILE = path.join("/tmp", "borsa_cron_kap_seen.json");
-const PRICE_ALERT_FILE = path.join("/tmp", "borsa_cron_price_alerts.json");
-const TRADE_LEVELS_FILE = path.join("/tmp", "borsa_cron_trade_levels.json");
+const KV = {
+  telegramState: "cron:telegram_state",
+  rotation: "cron:rotation",
+  watchlist: "cron:watchlist",
+  heartbeat: "cron:heartbeat",
+  kapSeen: "cron:kap_seen",
+  priceAlerts: "cron:price_alerts",
+  tradeLevels: "cron:trade_levels",
+} as const;
 
 export interface CronHeartbeat {
   lastRunAt: string;
@@ -25,95 +26,84 @@ export interface TradeLevelCacheEntry {
   updatedAt: string;
 }
 
-function readJson<T>(file: string, fallback: T): T {
-  try {
-    if (fs.existsSync(file)) {
-      return JSON.parse(fs.readFileSync(file, "utf8")) as T;
-    }
-  } catch {
-    // ignore corrupt tmp files
-  }
-  return fallback;
+export async function loadCronTelegramState(): Promise<Record<string, string>> {
+  return getJsonKv(KV.telegramState, {});
 }
 
-function writeJson(file: string, data: unknown) {
-  try {
-    fs.writeFileSync(file, JSON.stringify(data));
-  } catch {
-    // /tmp may fail on some environments — non-fatal
-  }
+export async function saveCronTelegramState(
+  state: Record<string, string>
+): Promise<void> {
+  await setJsonKv(KV.telegramState, state);
 }
 
-export function loadCronTelegramState(): Record<string, string> {
-  return readJson<Record<string, string>>(STATE_FILE, {});
+export async function loadCronRotationIndex(): Promise<number> {
+  const data = await getJsonKv(KV.rotation, { index: 0 });
+  return data.index;
 }
 
-export function saveCronTelegramState(state: Record<string, string>) {
-  writeJson(STATE_FILE, state);
+export async function saveCronRotationIndex(index: number): Promise<void> {
+  await setJsonKv(KV.rotation, { index });
 }
 
-export function loadCronRotationIndex(): number {
-  return readJson<{ index: number }>(ROTATION_FILE, { index: 0 }).index;
-}
-
-export function saveCronRotationIndex(index: number) {
-  writeJson(ROTATION_FILE, { index });
-}
-
-export function loadCronWatchlistOverride(): string[] | null {
-  const list = readJson<string[] | null>(WATCHLIST_FILE, null);
+export async function loadCronWatchlistOverride(): Promise<string[] | null> {
+  const list = await getJsonKv<string[] | null>(KV.watchlist, null);
   return list?.length ? list : null;
 }
 
-export function saveCronWatchlistOverride(symbols: string[]) {
-  writeJson(WATCHLIST_FILE, symbols);
+export async function saveCronWatchlistOverride(
+  symbols: string[]
+): Promise<void> {
+  await setJsonKv(KV.watchlist, symbols);
 }
 
-export function saveCronHeartbeat(data: CronHeartbeat) {
-  writeJson(HEARTBEAT_FILE, data);
+export async function saveCronHeartbeat(data: CronHeartbeat): Promise<void> {
+  await setJsonKv(KV.heartbeat, data);
 }
 
-export function loadCronHeartbeat(): CronHeartbeat | null {
-  const data = readJson<CronHeartbeat | null>(HEARTBEAT_FILE, null);
+export async function loadCronHeartbeat(): Promise<CronHeartbeat | null> {
+  const data = await getJsonKv<CronHeartbeat | null>(KV.heartbeat, null);
   return data?.lastRunAt ? data : null;
 }
 
-export function loadKapSeenIds(): Record<string, string[]> {
-  return readJson<Record<string, string[]>>(KAP_SEEN_FILE, {});
+export async function loadKapSeenIds(): Promise<Record<string, string[]>> {
+  return getJsonKv(KV.kapSeen, {});
 }
 
-export function saveKapSeenIds(state: Record<string, string[]>) {
-  writeJson(KAP_SEEN_FILE, state);
+export async function saveKapSeenIds(
+  state: Record<string, string[]>
+): Promise<void> {
+  await setJsonKv(KV.kapSeen, state);
 }
 
-export function loadCronPriceAlertState(): Record<
-  string,
-  { slTriggered?: boolean; tpTriggered?: boolean }
+export async function loadCronPriceAlertState(): Promise<
+  Record<string, { slTriggered?: boolean; tpTriggered?: boolean }>
 > {
-  return readJson(PRICE_ALERT_FILE, {});
+  return getJsonKv(KV.priceAlerts, {});
 }
 
-export function saveCronPriceAlertState(
+export async function saveCronPriceAlertState(
   state: Record<string, { slTriggered?: boolean; tpTriggered?: boolean }>
-) {
-  writeJson(PRICE_ALERT_FILE, state);
+): Promise<void> {
+  await setJsonKv(KV.priceAlerts, state);
 }
 
-export function loadTradeLevelsCache(): Record<string, TradeLevelCacheEntry> {
-  return readJson(TRADE_LEVELS_FILE, {});
+export async function loadTradeLevelsCache(): Promise<
+  Record<string, TradeLevelCacheEntry>
+> {
+  return getJsonKv(KV.tradeLevels, {});
 }
 
-export function saveTradeLevelsCache(
+export async function saveTradeLevelsCache(
   cache: Record<string, TradeLevelCacheEntry>
-) {
-  writeJson(TRADE_LEVELS_FILE, cache);
+): Promise<void> {
+  await setJsonKv(KV.tradeLevels, cache);
 }
 
-export function upsertTradeLevelsCache(
+export async function upsertTradeLevelsCache(
   symbol: string,
   entry: Omit<TradeLevelCacheEntry, "updatedAt">
-) {
-  const cache = loadTradeLevelsCache();
+): Promise<void> {
+  const cache = await loadTradeLevelsCache();
   cache[symbol] = { ...entry, updatedAt: new Date().toISOString() };
-  saveTradeLevelsCache(cache);
+  await saveTradeLevelsCache(cache);
 }

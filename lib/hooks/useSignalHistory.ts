@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { SuccessScore } from "@/lib/signal-history";
+import type { SignalRecord, SuccessScore } from "@/lib/signal-history";
 import {
   evaluateOpenSignals,
   getSuccessScore,
@@ -43,47 +43,93 @@ export function useSignalHistory({
     total: 0,
     recent: [],
   });
+  const [records, setRecords] = useState<SignalRecord[]>([]);
 
   useEffect(() => {
     if (!enabled || Object.keys(analysisMap).length === 0) return;
 
-    evaluateOpenSignals(prices);
+    let cancelled = false;
 
-    const state = loadSignalState();
+    async function sync() {
+      const entries = [];
 
-    for (const symbol of watchlist) {
-      const analysis = analysisMap[symbol];
-      if (!analysis) continue;
+      for (const symbol of watchlist) {
+        const analysis = analysisMap[symbol];
+        if (!analysis) continue;
 
-      const price = prices.find((p) => p.symbol === symbol)?.price ?? null;
-      const enhanced = buildEnhancedSignal(
-        symbol,
-        analysis,
-        stockNewsMap[symbol] ?? null,
-        globalNews,
-        price,
-        sectorTrends
-      );
+        const price = prices.find((p) => p.symbol === symbol)?.price ?? null;
+        const enhanced = buildEnhancedSignal(
+          symbol,
+          analysis,
+          stockNewsMap[symbol] ?? null,
+          globalNews,
+          price,
+          sectorTrends
+        );
 
-      const next = recordSignalIfNew(
-        symbol,
-        enhanced.combined.signalEn,
-        price,
-        state[symbol],
-        {
+        entries.push({
+          symbol,
+          signalEn: enhanced.combined.signalEn,
           signalTr: enhanced.combined.signalTr,
+          price,
           reason: enhanced.combined.reason,
           taSummary: buildTaSummary(analysis),
           technicalReason: analysis.technicalReason,
+        });
+      }
+
+      try {
+        const res = await fetch("/api/signals", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prices, entries }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled) {
+            setScore(data.score ?? score);
+            setRecords(data.records ?? []);
+          }
+          return;
         }
-      );
-      if (next) {
-        state[symbol] = next;
+      } catch {
+        // localStorage yedek
+      }
+
+      evaluateOpenSignals(prices);
+      const state = loadSignalState();
+
+      for (const entry of entries) {
+        const next = recordSignalIfNew(
+          entry.symbol,
+          entry.signalEn,
+          entry.price,
+          state[entry.symbol],
+          {
+            signalTr: entry.signalTr,
+            reason: entry.reason,
+            taSummary: entry.taSummary,
+            technicalReason: entry.technicalReason,
+          }
+        );
+        if (next) state[entry.symbol] = next;
+      }
+
+      saveSignalState(state);
+      if (!cancelled) {
+        const localScore = getSuccessScore();
+        setScore(localScore);
+        setRecords(
+          [...localScore.recent].sort((a, b) => b.timestamp - a.timestamp)
+        );
       }
     }
 
-    saveSignalState(state);
-    setScore(getSuccessScore());
+    void sync();
+    return () => {
+      cancelled = true;
+    };
   }, [
     watchlist,
     analysisMap,
@@ -94,5 +140,5 @@ export function useSignalHistory({
     enabled,
   ]);
 
-  return score;
+  return { score, records };
 }

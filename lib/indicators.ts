@@ -10,6 +10,10 @@ import type {
   SignalType,
   StockAnalysis,
 } from "./stocks";
+import {
+  LOW_VOLUME_SCORE_PENALTY,
+  MIN_DAILY_VOLUME,
+} from "./trading-config";
 
 export const MUM_SAYISI = 100;
 
@@ -117,14 +121,12 @@ export function buildTechnicalReason(input: {
   return `${triggerText} | ${scoreText}`;
 }
 
-export function combinedDecision(scores: number[]): {
+export function decisionFromScore(total: number): {
   signalEn: SignalType;
   signalTr: string;
   color: SignalColor;
   totalScore: number;
 } {
-  const total = scores.reduce((a, b) => a + b, 0);
-
   if (total === 4) {
     return { signalEn: "STRONG BUY", signalTr: "GÜÇLÜ AL", color: "green", totalScore: total };
   }
@@ -140,6 +142,31 @@ export function combinedDecision(scores: number[]): {
   return { signalEn: "NEUTRAL", signalTr: "BEKLE", color: "yellow", totalScore: total };
 }
 
+export function combinedDecision(scores: number[]): {
+  signalEn: SignalType;
+  signalTr: string;
+  color: SignalColor;
+  totalScore: number;
+} {
+  const total = scores.reduce((a, b) => a + b, 0);
+  return decisionFromScore(total);
+}
+
+function applyVolumeCalibration(
+  decision: ReturnType<typeof combinedDecision>,
+  volume?: number
+): ReturnType<typeof combinedDecision> {
+  if (volume == null || volume >= MIN_DAILY_VOLUME) {
+    return decision;
+  }
+
+  const isBuy =
+    decision.signalEn === "STRONG BUY" || decision.signalEn === "BUY";
+  if (!isBuy) return decision;
+
+  return decisionFromScore(decision.totalScore - LOW_VOLUME_SCORE_PENALTY);
+}
+
 export interface OhlcCandle {
   open: number;
   high: number;
@@ -148,11 +175,19 @@ export interface OhlcCandle {
   volume?: number;
 }
 
-export function analyzeStock(symbol: string, candles: OhlcCandle[]): StockAnalysis | null {
+export function analyzeStock(
+  symbol: string,
+  candles: OhlcCandle[],
+  options?: { volume?: number; livePrice?: number }
+): StockAnalysis | null {
   if (candles.length < 50) return null;
 
   const closes = candles.map((c) => c.close);
-  const price = closes[closes.length - 1];
+  let price = closes[closes.length - 1];
+  if (options?.livePrice != null && Number.isFinite(options.livePrice)) {
+    price = options.livePrice;
+  }
+  const volume = options?.volume ?? candles.at(-1)?.volume;
 
   const rsiValues = RSI.calculate({ values: closes, period: 14 });
   const macdValues = MACD.calculate({
@@ -199,24 +234,41 @@ export function analyzeStock(symbol: string, candles: OhlcCandle[]): StockAnalys
     ema: emaScore(price, ema20, ema50),
   };
 
-  const decision = combinedDecision(Object.values(scores));
+  const baseDecision = combinedDecision(Object.values(scores));
+  const decision = applyVolumeCalibration(baseDecision, volume);
+  const volumeOk = volume == null ? undefined : volume >= MIN_DAILY_VOLUME;
   const now = new Date().toLocaleTimeString("tr-TR");
   const macdValue = macd.MACD;
   const macdSignalValue = macd.signal;
 
-  const technicalReason = buildTechnicalReason({
-    price,
-    rsi,
-    macd: macdValue,
-    macdSignal: macdSignalValue,
-    ema20,
-    ema50,
-    bbLower: bb.lower,
-    bbUpper: bb.upper,
-    bbMiddle: bb.middle,
-    scores,
-    totalScore: decision.totalScore,
-  });
+  const technicalReason =
+    volume != null && volume < MIN_DAILY_VOLUME && baseDecision.totalScore >= 3
+      ? `${buildTechnicalReason({
+          price,
+          rsi,
+          macd: macdValue,
+          macdSignal: macdSignalValue,
+          ema20,
+          ema50,
+          bbLower: bb.lower,
+          bbUpper: bb.upper,
+          bbMiddle: bb.middle,
+          scores,
+          totalScore: decision.totalScore,
+        })} | Hacim dusuk (${Math.round(volume).toLocaleString("tr-TR")})`
+      : buildTechnicalReason({
+          price,
+          rsi,
+          macd: macdValue,
+          macdSignal: macdSignalValue,
+          ema20,
+          ema50,
+          bbLower: bb.lower,
+          bbUpper: bb.upper,
+          bbMiddle: bb.middle,
+          scores,
+          totalScore: decision.totalScore,
+        });
 
   return {
     symbol,
@@ -235,6 +287,8 @@ export function analyzeStock(symbol: string, candles: OhlcCandle[]): StockAnalys
     bbUpper: bb.upper,
     bbMiddle: bb.middle,
     technicalReason,
+    volume,
+    volumeOk,
     updatedAt: now,
   };
 }

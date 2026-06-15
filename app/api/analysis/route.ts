@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { analyzeStock } from "@/lib/indicators";
-import { fetchDailyOhlc } from "@/lib/tradingview/market-data";
+import {
+  fetchDailyOhlc,
+  fetchLiveQuotes,
+} from "@/lib/tradingview/market-data";
 import {
   getServerWatchlist,
   isValidBistSymbol,
@@ -14,8 +17,15 @@ export const maxDuration = 10;
 
 async function analyzeOne(symbol: string) {
   try {
-    const candles = await fetchDailyOhlc(symbol, 100);
-    const analysis = analyzeStock(symbol, candles);
+    const [{ candles }, quotes] = await Promise.all([
+      fetchDailyOhlc(symbol, 100),
+      fetchLiveQuotes([symbol]),
+    ]);
+    const quote = quotes[symbol];
+    const analysis = analyzeStock(symbol, candles, {
+      volume: quote?.volume,
+      livePrice: quote?.price ?? undefined,
+    });
     return analysis ?? { symbol, error: true as const };
   } catch {
     return { symbol, error: true as const };

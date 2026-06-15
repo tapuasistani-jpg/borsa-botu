@@ -2105,6 +2105,80 @@ input {
   text-transform: uppercase;
 }
 
+.kap-cat-badge {
+  font-size: 0.625rem;
+  font-weight: 600;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.kap-cat-badge.kap-cat-priority {
+  color: var(--orange, #f59e0b);
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.journal-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.journal-note {
+  flex: 2;
+  min-width: 160px;
+}
+
+.journal-side {
+  flex: 0 0 90px;
+  min-width: 90px;
+}
+
+.journal-levels,
+.journal-note-cell {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  max-width: 120px;
+}
+
+.journal-pnl-pct {
+  font-size: 0.6875rem;
+  opacity: 0.85;
+}
+
+.journal-actions {
+  min-width: 140px;
+}
+
+.journal-close-row {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.journal-close-input {
+  min-width: 70px !important;
+  flex: 1;
+  padding: 0.35rem 0.5rem !important;
+  font-size: 0.75rem !important;
+}
+
+.journal-closed {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.journal-totals {
+  margin-top: 1rem;
+}
+
 @media (max-width: 768px) {
   .signal-log-table {
     font-size: 0.75rem;

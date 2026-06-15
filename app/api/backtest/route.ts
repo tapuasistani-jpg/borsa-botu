@@ -22,7 +22,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const candles = await fetchDailyOhlc(symbol, 150);
+    const { candles } = await fetchDailyOhlc(symbol, 150);
     const result = runBacktest(symbol, candles);
 
     if (!result) {

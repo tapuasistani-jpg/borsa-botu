@@ -1,15 +1,19 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { SuccessScore } from "@/lib/signal-history";
+import type { SignalRecord, SuccessScore } from "@/lib/signal-history";
 import { getSignalLog } from "@/lib/signal-history";
 import SignalHistoryModal from "@/components/SignalHistoryModal";
 
 interface SuccessScoreBadgeProps {
   score: SuccessScore;
+  records?: SignalRecord[];
 }
 
-export default function SuccessScoreBadge({ score }: SuccessScoreBadgeProps) {
+export default function SuccessScoreBadge({
+  score,
+  records = [],
+}: SuccessScoreBadgeProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const hasData = score.total > 0;
   const colorClass =
@@ -22,6 +26,9 @@ export default function SuccessScoreBadge({ score }: SuccessScoreBadgeProps) {
   const openModal = useCallback(() => {
     setModalOpen(true);
   }, []);
+
+  const modalRecords =
+    records.length > 0 ? records.slice(0, 30) : getSignalLog(30);
 
   return (
     <>
@@ -44,7 +51,7 @@ export default function SuccessScoreBadge({ score }: SuccessScoreBadgeProps) {
 
       <SignalHistoryModal
         open={modalOpen}
-        records={getSignalLog(30)}
+        records={modalRecords}
         onClose={() => setModalOpen(false)}
       />
     </>

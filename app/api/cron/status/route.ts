@@ -6,6 +6,7 @@ import {
 } from "@/lib/cron/telegram-state";
 import { isCronSecretConfigured } from "@/lib/cron/auth";
 import { isTelegramConfigured } from "@/lib/telegram/send";
+import { getDbMode, isTursoConfigured } from "@/lib/db/client";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -19,7 +20,7 @@ export async function GET() {
     return NextResponse.json({ error: "Yetkisiz." }, { status: 401 });
   }
 
-  const heartbeat = loadCronHeartbeat();
+  const heartbeat = await loadCronHeartbeat();
   const now = Date.now();
   let status: "active" | "delayed" | "missing" = "missing";
   let minutesSinceLastRun: number | null = null;
@@ -48,8 +49,10 @@ export async function GET() {
     cronSecretConfigured: isCronSecretConfigured(),
     cronEndpoint,
     cronEndpointWithSecret: `${cronEndpoint}?secret=CRON_SECRET_DEGERIN`,
+    storage: getDbMode(),
+    tursoConfigured: isTursoConfigured(),
     setupHint:
-      "Tum izleme listesi her calismada taranir. cron-job.org: onerilen 5 dk.",
+      "Tum izleme listesi her calismada taranir. cron-job.org: onerilen 5 dk. Veriler SQLite DB'de kalici.",
   });
 }
 
@@ -74,7 +77,7 @@ export async function POST(request: Request) {
         Number.isFinite(entry.stopLoss) &&
         Number.isFinite(entry.takeProfit)
       ) {
-        upsertTradeLevelsCache(symbol, {
+        await upsertTradeLevelsCache(symbol, {
           stopLoss: entry.stopLoss,
           takeProfit: entry.takeProfit,
         });

@@ -45,6 +45,8 @@ export interface StockAnalysis {
   bbMiddle: number;
   /** Sinyali tetikleyen indikatörlerin sayisal ozeti */
   technicalReason: string;
+  volume?: number;
+  volumeOk?: boolean;
   updatedAt: string;
 }
 

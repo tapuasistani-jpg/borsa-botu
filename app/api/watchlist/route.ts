@@ -17,12 +17,12 @@ export async function GET() {
     return NextResponse.json({ error: "Yetkisiz." }, { status: 401 });
   }
 
-  const symbols =
-    loadCronWatchlistOverride() ?? getServerWatchlist();
+  const override = await loadCronWatchlistOverride();
+  const symbols = override ?? getServerWatchlist();
 
   return NextResponse.json({
     symbols,
-    source: loadCronWatchlistOverride() ? "synced" : "env_or_default",
+    source: override ? "synced" : "env_or_default",
   });
 }
 
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     const symbols = sanitizeWatchlist(
       Array.isArray(body.symbols) ? body.symbols.map(String) : []
     );
-    saveCronWatchlistOverride(symbols);
+    await saveCronWatchlistOverride(symbols);
     return NextResponse.json({ ok: true, symbols });
   } catch {
     return NextResponse.json({ error: "Gecersiz istek." }, { status: 400 });

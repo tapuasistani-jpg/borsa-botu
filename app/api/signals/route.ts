@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { sanitizePortfolio, type PortfolioItem } from "@/lib/portfolio";
+import { getDbMode } from "@/lib/db/client";
 import {
-  loadServerPortfolio,
-  saveServerPortfolio,
-} from "@/lib/portfolio-store";
-import { getDbMode, isTursoConfigured } from "@/lib/db/client";
+  getSignalSnapshot,
+  syncSignals,
+  type SignalSyncEntry,
+} from "@/lib/signal-sync";
 
 export const runtime = "nodejs";
 
@@ -15,12 +15,11 @@ export async function GET() {
     return NextResponse.json({ error: "Yetkisiz." }, { status: 401 });
   }
 
-  const items = await loadServerPortfolio();
+  const { records, score } = await getSignalSnapshot();
   return NextResponse.json({
-    items,
-    updatedAt: new Date().toISOString(),
+    records: [...records].sort((a, b) => b.timestamp - a.timestamp),
+    score,
     storage: getDbMode(),
-    turso: isTursoConfigured(),
   });
 }
 
@@ -32,15 +31,17 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const items = sanitizePortfolio(
-      Array.isArray(body.items) ? body.items : []
-    ) as PortfolioItem[];
+    const prices = Array.isArray(body.prices) ? body.prices : [];
+    const entries = Array.isArray(body.entries)
+      ? (body.entries as SignalSyncEntry[])
+      : [];
 
-    await saveServerPortfolio(items);
+    const { records, score } = await syncSignals(prices, entries);
+
     return NextResponse.json({
       ok: true,
-      items,
-      updatedAt: new Date().toISOString(),
+      records: [...records].sort((a, b) => b.timestamp - a.timestamp),
+      score,
       storage: getDbMode(),
     });
   } catch {

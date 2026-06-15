@@ -5,6 +5,9 @@ export interface KapDisclosure {
   link: string;
   publishedAt?: string;
   source: "kap" | "kap-news";
+  category?: string;
+  categoryLabel?: string;
+  priority?: boolean;
 }
 
 export interface KapFeedResult {

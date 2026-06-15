@@ -1,4 +1,5 @@
 import type { KapDisclosure } from "./types";
+import { isPriorityKapTitle } from "./classify";
 import {
   loadKapSeenIds,
   saveKapSeenIds,
@@ -15,9 +16,10 @@ export async function processKapAlerts(
     return { sent: 0, newItems: [] };
   }
 
-  const seenState = loadKapSeenIds();
+  const seenState = await loadKapSeenIds();
   const seen = new Set(seenState[symbol] ?? []);
-  const newItems = items.filter((item) => !seen.has(item.id));
+  const priorityItems = items.filter((item) => item.priority ?? isPriorityKapTitle(item.title));
+  const newItems = priorityItems.filter((item) => !seen.has(item.id));
 
   if (newItems.length === 0) {
     return { sent: 0, newItems: [] };
@@ -25,9 +27,10 @@ export async function processKapAlerts(
 
   let sent = 0;
   for (const item of newItems.slice(0, 3)) {
+    const prefix = item.categoryLabel ? `[${item.categoryLabel}] ` : "";
     const result = await sendTelegramKapAlert({
       symbol,
-      title: item.title,
+      title: `${prefix}${item.title}`,
       link: item.link,
     });
     if (result.ok) sent++;
@@ -39,15 +42,15 @@ export async function processKapAlerts(
   ].slice(0, MAX_SEEN_PER_SYMBOL);
 
   seenState[symbol] = nextSeen;
-  saveKapSeenIds(seenState);
+  await saveKapSeenIds(seenState);
 
   return { sent, newItems };
 }
 
-export function seedKapSeen(symbol: string, items: KapDisclosure[]) {
-  const seenState = loadKapSeenIds();
+export async function seedKapSeen(symbol: string, items: KapDisclosure[]) {
+  const seenState = await loadKapSeenIds();
   if ((seenState[symbol] ?? []).length > 0) return;
 
   seenState[symbol] = items.slice(0, 5).map((i) => i.id);
-  saveKapSeenIds(seenState);
+  await saveKapSeenIds(seenState);
 }

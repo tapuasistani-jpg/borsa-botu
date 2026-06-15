@@ -14,6 +14,7 @@ import { calculateTradeLevels } from "@/lib/trade-levels";
 import {
   fetchDailyOhlc,
   fetchLiveQuotes,
+  type QuoteWithSource,
 } from "@/lib/tradingview/market-data";
 import {
   getServerWatchlist,
@@ -30,7 +31,6 @@ import {
   upsertTradeLevelsCache,
 } from "@/lib/cron/telegram-state";
 
-/** Ayni anda kac hisse icin Yahoo/RSS cagrisi yapilacak */
 const PARALLEL_BATCH = 5;
 
 export interface CronTelegramResult {
@@ -44,9 +44,16 @@ export interface CronTelegramResult {
   error?: string;
 }
 
-async function analyzeSymbol(symbol: string) {
-  const candles = await fetchDailyOhlc(symbol, 100);
-  return analyzeStock(symbol, candles);
+async function analyzeSymbol(
+  symbol: string,
+  quotes: Record<string, QuoteWithSource>
+) {
+  const { candles } = await fetchDailyOhlc(symbol, 100);
+  const quote = quotes[symbol];
+  return analyzeStock(symbol, candles, {
+    volume: quote?.volume,
+    livePrice: quote?.price ?? undefined,
+  });
 }
 
 async function mapInBatches<T, R>(
@@ -70,7 +77,7 @@ async function runKapChecks(symbols: string[]): Promise<number> {
     const items = await fetchKapDisclosures(symbol);
     if (items.length === 0) return;
 
-    seedKapSeen(symbol, items);
+    await seedKapSeen(symbol, items);
     const result = await processKapAlerts(symbol, items);
     sent += result.sent;
   });
@@ -82,8 +89,8 @@ async function runPriceLevelChecks(
   symbols: string[],
   quotes: Record<string, { price?: number | null }>
 ): Promise<number> {
-  const levelsCache = loadTradeLevelsCache();
-  let priceState = loadCronPriceAlertState();
+  const levelsCache = await loadTradeLevelsCache();
+  let priceState = await loadCronPriceAlertState();
   let sent = 0;
 
   for (const symbol of symbols) {
@@ -111,14 +118,17 @@ async function runPriceLevelChecks(
     }
   }
 
-  saveCronPriceAlertState(priceState);
+  await saveCronPriceAlertState(priceState);
   return sent;
 }
 
-async function scanAllSymbols(symbols: string[]) {
+async function scanAllSymbols(
+  symbols: string[],
+  quotes: Record<string, QuoteWithSource>
+) {
   return mapInBatches(symbols, PARALLEL_BATCH, async (symbol) => {
     const [analysisResult, stockResult] = await Promise.allSettled([
-      analyzeSymbol(symbol),
+      analyzeSymbol(symbol, quotes),
       runStockNews(symbol),
     ]);
 
@@ -135,7 +145,7 @@ export async function runTelegramCronJob(): Promise<CronTelegramResult> {
   const startedAt = new Date().toISOString();
 
   if (!isTelegramConfigured()) {
-    saveCronHeartbeat({
+    await saveCronHeartbeat({
       lastRunAt: startedAt,
       alertsSent: 0,
       kapAlertsSent: 0,
@@ -157,11 +167,11 @@ export async function runTelegramCronJob(): Promise<CronTelegramResult> {
   }
 
   const watchlist =
-    loadCronWatchlistOverride() ?? getServerWatchlist();
+    (await loadCronWatchlistOverride()) ?? getServerWatchlist();
   const symbols = sanitizeWatchlist(watchlist);
 
   if (symbols.length === 0) {
-    saveCronHeartbeat({
+    await saveCronHeartbeat({
       lastRunAt: startedAt,
       alertsSent: 0,
       kapAlertsSent: 0,
@@ -182,13 +192,15 @@ export async function runTelegramCronJob(): Promise<CronTelegramResult> {
     };
   }
 
-  const [quotes, globalNewsResult, kapAlertsSent, scanResults] =
-    await Promise.all([
-      fetchLiveQuotes(symbols),
-      runGlobalNews(),
-      runKapChecks(symbols),
-      scanAllSymbols(symbols),
-    ]);
+  const [quotes, globalNewsResult] = await Promise.all([
+    fetchLiveQuotes(symbols),
+    runGlobalNews(),
+  ]);
+
+  const [kapAlertsSent, scanResults] = await Promise.all([
+    runKapChecks(symbols),
+    scanAllSymbols(symbols, quotes),
+  ]);
 
   const globalNews = globalNewsResult.global;
 
@@ -200,7 +212,7 @@ export async function runTelegramCronJob(): Promise<CronTelegramResult> {
 
   const sectorTrends = computeSectorTrends(prices, {});
 
-  const state = loadCronTelegramState();
+  const state = await loadCronTelegramState();
   let alertsSent = 0;
   const processed: string[] = [];
   const skipped: string[] = [];
@@ -216,7 +228,7 @@ export async function runTelegramCronJob(): Promise<CronTelegramResult> {
 
     if (price !== null && price > 0) {
       const tradeLevels = calculateTradeLevels(price, analysis);
-      upsertTradeLevelsCache(symbol, {
+      await upsertTradeLevelsCache(symbol, {
         stopLoss: tradeLevels.stopLoss,
         takeProfit: tradeLevels.takeProfit,
       });
@@ -266,14 +278,14 @@ export async function runTelegramCronJob(): Promise<CronTelegramResult> {
     }
   }
 
-  saveCronTelegramState(state);
+  await saveCronTelegramState(state);
 
   const quoteMap = Object.fromEntries(
     symbols.map((symbol) => [symbol, { price: quotes[symbol]?.price ?? null }])
   );
   const priceAlertsSent = await runPriceLevelChecks(symbols, quoteMap);
 
-  saveCronHeartbeat({
+  await saveCronHeartbeat({
     lastRunAt: new Date().toISOString(),
     alertsSent,
     kapAlertsSent,

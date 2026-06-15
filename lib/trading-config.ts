@@ -12,3 +12,9 @@ export const SIGNAL_WIN_THRESHOLD = 1.0;
 
 /** AL sinyali basarisizlik esigi (%) */
 export const SIGNAL_LOSS_THRESHOLD = -1.5;
+
+/** Dusuk hacimde AL sinyali zayiflatma — gunluk islem adedi alt siniri */
+export const MIN_DAILY_VOLUME = 750_000;
+
+/** Dusuk hacim ceza puani (AL -> BEKLE kaydirma) */
+export const LOW_VOLUME_SCORE_PENALTY = 2;
