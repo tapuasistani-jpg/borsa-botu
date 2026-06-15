@@ -87,7 +87,10 @@ export default function CronStatusBadge({
             Preview linki kullanma (
             <code>*-projects.vercel.app</code> → 401 verir)
           </li>
-          <li>Schedule: Every 15 minutes · Method: GET</li>
+          <li>
+            <strong>Tum izleme listesi</strong> her calismada taranir (rotasyon yok)
+          </li>
+          <li>Schedule: Every 5 minutes (onerilen) · Method: GET</li>
           <li>
             <strong>Yontem A — Header (onerilen):</strong>
             <br />

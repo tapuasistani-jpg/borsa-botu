@@ -10,8 +10,8 @@ import { isTelegramConfigured } from "@/lib/telegram/send";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const CRON_INTERVAL_MINUTES = 15;
-const HEALTH_GRACE_MINUTES = 5;
+const CRON_INTERVAL_MINUTES = Number(process.env.CRON_INTERVAL_MINUTES) || 5;
+const HEALTH_GRACE_MINUTES = 3;
 
 export async function GET() {
   const session = await getSession();
@@ -49,7 +49,7 @@ export async function GET() {
     cronEndpoint,
     cronEndpointWithSecret: `${cronEndpoint}?secret=CRON_SECRET_DEGERIN`,
     setupHint:
-      "Production URL kullan. Preview (*.vercel.app deploy linki) 401 verir.",
+      "Tum izleme listesi her calismada taranir. cron-job.org: onerilen 5 dk.",
   });
 }
 

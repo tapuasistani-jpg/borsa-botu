@@ -121,7 +121,7 @@ export default function WatchlistPanel({
 
         {message && <p className="panel-note">{message}</p>}
         <p className="panel-note">
-          {watchlist.length} hisse · Cron her 15 dk 5 hisseyi tarar (rotasyon).
+          {watchlist.length} hisse · Cron tum listeyi ayni anda tarar (5 hisse/batch).
         </p>
       </div>
     </section>

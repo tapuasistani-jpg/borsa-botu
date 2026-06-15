@@ -499,7 +499,7 @@ export default function DashboardClient({ username }: { username: string }) {
           <span className="legend-dot" style={{ background: "var(--red)" }} />
           SAT / GUCULU SAT
         </span>
-        <span>Cron 15dk · KAP · SL/TP alarm · TradingView</span>
+        <span>Cron 5dk · Tum liste · KAP · SL/TP · TradingView</span>
         <span className="legend-author">Emre ARSLAN</span>
       </footer>
     </main>

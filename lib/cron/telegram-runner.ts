@@ -20,19 +20,18 @@ import {
   sanitizeWatchlist,
 } from "@/lib/watchlist";
 import {
-  loadCronRotationIndex,
   loadCronTelegramState,
   loadCronWatchlistOverride,
   loadCronPriceAlertState,
   loadTradeLevelsCache,
-  saveCronRotationIndex,
   saveCronTelegramState,
   saveCronPriceAlertState,
   saveCronHeartbeat,
   upsertTradeLevelsCache,
 } from "@/lib/cron/telegram-state";
 
-const CHUNK_SIZE = 5;
+/** Ayni anda kac hisse icin Yahoo/RSS cagrisi yapilacak */
+const PARALLEL_BATCH = 5;
 
 export interface CronTelegramResult {
   ok: boolean;
@@ -41,6 +40,7 @@ export interface CronTelegramResult {
   kapAlertsSent: number;
   priceAlertsSent: number;
   skipped: string[];
+  symbolCount: number;
   error?: string;
 }
 
@@ -49,17 +49,31 @@ async function analyzeSymbol(symbol: string) {
   return analyzeStock(symbol, candles);
 }
 
+async function mapInBatches<T, R>(
+  items: T[],
+  batchSize: number,
+  fn: (item: T) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map(fn));
+    results.push(...batchResults);
+  }
+  return results;
+}
+
 async function runKapChecks(symbols: string[]): Promise<number> {
   let sent = 0;
 
-  for (const symbol of symbols) {
+  await mapInBatches(symbols, PARALLEL_BATCH, async (symbol) => {
     const items = await fetchKapDisclosures(symbol);
-    if (items.length === 0) continue;
+    if (items.length === 0) return;
 
     seedKapSeen(symbol, items);
     const result = await processKapAlerts(symbol, items);
     sent += result.sent;
-  }
+  });
 
   return sent;
 }
@@ -101,6 +115,22 @@ async function runPriceLevelChecks(
   return sent;
 }
 
+async function scanAllSymbols(symbols: string[]) {
+  return mapInBatches(symbols, PARALLEL_BATCH, async (symbol) => {
+    const [analysisResult, stockResult] = await Promise.allSettled([
+      analyzeSymbol(symbol),
+      runStockNews(symbol),
+    ]);
+
+    return {
+      symbol,
+      analysis:
+        analysisResult.status === "fulfilled" ? analysisResult.value : null,
+      stock: stockResult.status === "fulfilled" ? stockResult.value : null,
+    };
+  });
+}
+
 export async function runTelegramCronJob(): Promise<CronTelegramResult> {
   const startedAt = new Date().toISOString();
 
@@ -121,6 +151,7 @@ export async function runTelegramCronJob(): Promise<CronTelegramResult> {
       kapAlertsSent: 0,
       priceAlertsSent: 0,
       skipped: [],
+      symbolCount: 0,
       error: "Telegram ayarlari eksik.",
     };
   }
@@ -146,22 +177,19 @@ export async function runTelegramCronJob(): Promise<CronTelegramResult> {
       kapAlertsSent: 0,
       priceAlertsSent: 0,
       skipped: [],
+      symbolCount: 0,
       error: "Izleme listesi bos.",
     };
   }
 
-  const rotation = loadCronRotationIndex();
-  const chunk: string[] = [];
-  for (let i = 0; i < CHUNK_SIZE && i < symbols.length; i++) {
-    chunk.push(symbols[(rotation + i) % symbols.length]);
-  }
-  saveCronRotationIndex((rotation + CHUNK_SIZE) % symbols.length);
+  const [quotes, globalNewsResult, kapAlertsSent, scanResults] =
+    await Promise.all([
+      fetchLiveQuotes(symbols),
+      runGlobalNews(),
+      runKapChecks(symbols),
+      scanAllSymbols(symbols),
+    ]);
 
-  const [quotes, globalNewsResult, kapAlertsSent] = await Promise.all([
-    fetchLiveQuotes(symbols),
-    runGlobalNews(),
-    runKapChecks(chunk),
-  ]);
   const globalNews = globalNewsResult.global;
 
   const prices = symbols.map((symbol) => ({
@@ -172,38 +200,13 @@ export async function runTelegramCronJob(): Promise<CronTelegramResult> {
 
   const sectorTrends = computeSectorTrends(prices, {});
 
-  const analysisResults = await Promise.all(
-    chunk.map(async (symbol) => {
-      try {
-        return { symbol, analysis: await analyzeSymbol(symbol) };
-      } catch {
-        return { symbol, analysis: null };
-      }
-    })
-  );
-
-  const newsResults = await Promise.all(
-    chunk.map(async (symbol) => {
-      try {
-        const stock = await runStockNews(symbol);
-        return { symbol, stock };
-      } catch {
-        return { symbol, stock: null };
-      }
-    })
-  );
-
   const state = loadCronTelegramState();
   let alertsSent = 0;
   const processed: string[] = [];
   const skipped: string[] = [];
 
-  for (const symbol of chunk) {
+  for (const { symbol, analysis, stock: stockNews } of scanResults) {
     processed.push(symbol);
-    const analysis =
-      analysisResults.find((r) => r.symbol === symbol)?.analysis ?? null;
-    const stockNews =
-      newsResults.find((r) => r.symbol === symbol)?.stock ?? null;
     const price = quotes[symbol]?.price ?? null;
 
     if (!analysis) {
@@ -286,5 +289,6 @@ export async function runTelegramCronJob(): Promise<CronTelegramResult> {
     kapAlertsSent,
     priceAlertsSent,
     skipped,
+    symbolCount: symbols.length,
   };
 }
