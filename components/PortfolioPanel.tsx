@@ -1,8 +1,9 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   calcPnL,
+  calcPortfolioTotals,
   loadPortfolio,
   newPortfolioId,
   savePortfolio,
@@ -119,8 +120,17 @@ export default function PortfolioPanel({ prices, watchlist }: PortfolioPanelProp
     return prices.find((p) => p.symbol === sym)?.price ?? null;
   }
 
-  let totalCost = 0;
-  let totalValue = 0;
+  const totals = useMemo(
+    () => calcPortfolioTotals(items, prices),
+    [items, prices]
+  );
+
+  const pnlClass =
+    totals.pnlTl === null
+      ? ""
+      : totals.pnlTl >= 0
+        ? "pnl-pos"
+        : "pnl-neg";
 
   return (
     <section className="panel-section">
@@ -195,11 +205,8 @@ export default function PortfolioPanel({ prices, watchlist }: PortfolioPanelProp
                     item.buyPrice,
                     live
                   );
-                  const cost = item.quantity * item.buyPrice;
-                  totalCost += cost;
-                  if (live !== null) totalValue += item.quantity * live;
 
-                  const pnlClass =
+                  const rowPnlClass =
                     pnlTl === null
                       ? ""
                       : pnlTl >= 0
@@ -212,12 +219,12 @@ export default function PortfolioPanel({ prices, watchlist }: PortfolioPanelProp
                       <td>{item.quantity}</td>
                       <td>{item.buyPrice.toFixed(2)}</td>
                       <td>{live !== null ? live.toFixed(2) : "—"}</td>
-                      <td className={pnlClass}>
+                      <td className={rowPnlClass}>
                         {pnlTl !== null
                           ? `${pnlTl >= 0 ? "+" : ""}${pnlTl.toFixed(2)}`
                           : "—"}
                       </td>
-                      <td className={pnlClass}>
+                      <td className={rowPnlClass}>
                         {pnlPercent !== null
                           ? `${pnlPercent >= 0 ? "+" : ""}${pnlPercent.toFixed(2)}%`
                           : "—"}
@@ -238,26 +245,38 @@ export default function PortfolioPanel({ prices, watchlist }: PortfolioPanelProp
               </tbody>
               {items.length > 0 && (
                 <tfoot>
-                  <tr>
-                    <td colSpan={4} className="cell-bold">
+                  <tr className="portfolio-tfoot">
+                    <td colSpan={2} className="cell-bold">
                       Toplam
                     </td>
-                    <td
-                      className={
-                        totalValue - totalCost >= 0 ? "pnl-pos" : "pnl-neg"
-                      }
-                    >
-                      {totalValue > 0
-                        ? `${totalValue - totalCost >= 0 ? "+" : ""}${(totalValue - totalCost).toFixed(2)} TL`
+                    <td>
+                      <span className="portfolio-foot-label">Yatirim</span>
+                      {totals.totalCost.toLocaleString("tr-TR", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}{" "}
+                      TL
+                    </td>
+                    <td>
+                      <span className="portfolio-foot-label">Guncel deger</span>
+                      {totals.totalValue > 0
+                        ? `${totals.totalValue.toLocaleString("tr-TR", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })} TL`
                         : "—"}
                     </td>
-                    <td
-                      className={
-                        totalValue - totalCost >= 0 ? "pnl-pos" : "pnl-neg"
-                      }
-                    >
-                      {totalCost > 0 && totalValue > 0
-                        ? `${((totalValue - totalCost) / totalCost) * 100 >= 0 ? "+" : ""}${(((totalValue - totalCost) / totalCost) * 100).toFixed(2)}%`
+                    <td className={pnlClass}>
+                      {totals.pnlTl !== null
+                        ? `${totals.pnlTl >= 0 ? "+" : ""}${totals.pnlTl.toLocaleString("tr-TR", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })} TL`
+                        : "—"}
+                    </td>
+                    <td className={pnlClass}>
+                      {totals.pnlPercent !== null
+                        ? `${totals.pnlPercent >= 0 ? "+" : ""}${totals.pnlPercent.toFixed(2)}%`
                         : "—"}
                     </td>
                     <td></td>
@@ -265,6 +284,49 @@ export default function PortfolioPanel({ prices, watchlist }: PortfolioPanelProp
                 </tfoot>
               )}
             </table>
+
+            <div className="portfolio-summary">
+              <div className="portfolio-summary-item">
+                <span className="portfolio-summary-label">Toplam yatirim</span>
+                <strong>
+                  {totals.totalCost.toLocaleString("tr-TR", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}{" "}
+                  TL
+                </strong>
+              </div>
+              <div className="portfolio-summary-item">
+                <span className="portfolio-summary-label">Guncel deger</span>
+                <strong>
+                  {totals.totalValue > 0
+                    ? `${totals.totalValue.toLocaleString("tr-TR", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })} TL`
+                    : "—"}
+                </strong>
+              </div>
+              <div className={`portfolio-summary-item ${pnlClass}`}>
+                <span className="portfolio-summary-label">Kar / zarar</span>
+                <strong>
+                  {totals.pnlTl !== null
+                    ? `${totals.pnlTl >= 0 ? "+" : ""}${totals.pnlTl.toLocaleString("tr-TR", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })} TL`
+                    : "—"}
+                </strong>
+              </div>
+              <div className={`portfolio-summary-item ${pnlClass}`}>
+                <span className="portfolio-summary-label">K/Z yuzdesi</span>
+                <strong>
+                  {totals.pnlPercent !== null
+                    ? `${totals.pnlPercent >= 0 ? "+" : ""}${totals.pnlPercent.toFixed(2)}%`
+                    : "—"}
+                </strong>
+              </div>
+            </div>
           </div>
         )}
         <p className="panel-note">

@@ -35,6 +35,62 @@ export function calcPnL(
   return { pnlTl, pnlPercent, currentValue };
 }
 
+export interface PortfolioTotals {
+  totalCost: number;
+  totalValue: number;
+  pnlTl: number | null;
+  pnlPercent: number | null;
+  allPricesAvailable: boolean;
+}
+
+export function calcPortfolioTotals(
+  items: PortfolioItem[],
+  prices: { symbol: string; price: number | null }[]
+): PortfolioTotals {
+  let totalCost = 0;
+  let totalValue = 0;
+  let valuedCost = 0;
+  let missingPrices = 0;
+
+  for (const item of items) {
+    const cost = item.quantity * item.buyPrice;
+    totalCost += cost;
+
+    const live = prices.find((p) => p.symbol === item.symbol)?.price ?? null;
+    if (live === null) {
+      missingPrices += 1;
+      continue;
+    }
+
+    totalValue += item.quantity * live;
+    valuedCost += cost;
+  }
+
+  const allPricesAvailable =
+    items.length > 0 && missingPrices === 0;
+
+  if (valuedCost <= 0) {
+    return {
+      totalCost,
+      totalValue,
+      pnlTl: null,
+      pnlPercent: null,
+      allPricesAvailable,
+    };
+  }
+
+  const pnlTl = totalValue - valuedCost;
+  const pnlPercent = (pnlTl / valuedCost) * 100;
+
+  return {
+    totalCost,
+    totalValue,
+    pnlTl,
+    pnlPercent,
+    allPricesAvailable,
+  };
+}
+
 export function newPortfolioId(): string {
   return `p_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }

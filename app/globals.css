@@ -977,6 +977,69 @@ input {
   font-weight: 600;
 }
 
+.portfolio-tfoot td {
+  vertical-align: top;
+}
+
+.portfolio-foot-label {
+  display: block;
+  font-size: 0.625rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.15rem;
+}
+
+.portfolio-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.portfolio-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.portfolio-summary-label {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.portfolio-summary-item strong {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.portfolio-summary-item.pnl-pos strong {
+  color: var(--green);
+}
+
+.portfolio-summary-item.pnl-neg strong {
+  color: var(--red);
+}
+
+@media (max-width: 768px) {
+  .portfolio-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .portfolio-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
 .cell-bold {
   font-weight: 700;
 }
