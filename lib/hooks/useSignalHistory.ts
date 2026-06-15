@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { SignalRecord, SuccessScore } from "@/lib/signal-history";
 import {
   evaluateOpenSignals,
+  getSignalLog,
   getSuccessScore,
   loadSignalState,
   recordSignalIfNew,
@@ -28,6 +29,18 @@ interface UseSignalHistoryProps {
   enabled: boolean;
 }
 
+const EMPTY_SCORE: SuccessScore = {
+  percent: 0,
+  wins: 0,
+  total: 0,
+  open: 0,
+  recent: [],
+};
+
+function sortRecords(records: SignalRecord[]) {
+  return [...records].sort((a, b) => b.timestamp - a.timestamp);
+}
+
 export function useSignalHistory({
   watchlist,
   analysisMap,
@@ -37,12 +50,7 @@ export function useSignalHistory({
   sectorTrends,
   enabled,
 }: UseSignalHistoryProps) {
-  const [score, setScore] = useState<SuccessScore>({
-    percent: 0,
-    wins: 0,
-    total: 0,
-    recent: [],
-  });
+  const [score, setScore] = useState<SuccessScore>(EMPTY_SCORE);
   const [records, setRecords] = useState<SignalRecord[]>([]);
 
   useEffect(() => {
@@ -79,6 +87,15 @@ export function useSignalHistory({
       }
 
       try {
+        const getRes = await fetch("/api/signals");
+        if (getRes.ok) {
+          const getData = await getRes.json();
+          if (!cancelled && Array.isArray(getData.records)) {
+            setScore(getData.score ?? EMPTY_SCORE);
+            setRecords(sortRecords(getData.records));
+          }
+        }
+
         const res = await fetch("/api/signals", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -88,8 +105,8 @@ export function useSignalHistory({
         if (res.ok) {
           const data = await res.json();
           if (!cancelled) {
-            setScore(data.score ?? score);
-            setRecords(data.records ?? []);
+            setScore(data.score ?? EMPTY_SCORE);
+            setRecords(sortRecords(data.records ?? []));
           }
           return;
         }
@@ -120,9 +137,7 @@ export function useSignalHistory({
       if (!cancelled) {
         const localScore = getSuccessScore();
         setScore(localScore);
-        setRecords(
-          [...localScore.recent].sort((a, b) => b.timestamp - a.timestamp)
-        );
+        setRecords(getSignalLog(30));
       }
     }
 

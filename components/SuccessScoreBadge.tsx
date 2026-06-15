@@ -15,7 +15,9 @@ export default function SuccessScoreBadge({
   records = [],
 }: SuccessScoreBadgeProps) {
   const [modalOpen, setModalOpen] = useState(false);
-  const hasData = score.total > 0;
+  const hasEvaluated = score.total > 0;
+  const hasOpen = score.open > 0;
+  const hasAny = hasEvaluated || hasOpen;
   const colorClass =
     score.percent >= 60
       ? "success-high"
@@ -34,18 +36,24 @@ export default function SuccessScoreBadge({
     <>
       <button
         type="button"
-        className={`success-score-badge success-score-clickable ${hasData ? colorClass : ""}`}
+        className={`success-score-badge success-score-clickable ${hasEvaluated ? colorClass : hasOpen ? "success-pending" : ""}`}
         onClick={openModal}
         title="Sinyal gecmisini ac"
       >
         <span className="success-score-label">Basari Skoru</span>
         <span className="success-score-value">
-          {hasData ? `%${score.percent}` : "—"}
+          {hasEvaluated
+            ? `%${score.percent}`
+            : hasOpen
+              ? "Takipte"
+              : "—"}
         </span>
         <span className="success-score-detail">
-          {hasData
+          {hasEvaluated
             ? `Son ${score.total} sinyal · ${score.wins} basarili · Detay icin tikla`
-            : "Sinyal verisi birikiyor... · Gecmis icin tikla"}
+            : hasOpen
+              ? `${score.open} acik sinyal · Sonuc bekleniyor · Detay icin tikla`
+              : "Sinyal verisi birikiyor... · Gecmis icin tikla"}
         </span>
       </button>
 

@@ -104,10 +104,13 @@ function computeScore(records: SignalRecord[]): SuccessScore {
   const wins = recent.filter((r) => r.status === "WIN").length;
   const total = recent.length;
 
+  const open = records.filter((r) => r.status === "OPEN").length;
+
   return {
     percent: total > 0 ? Math.round((wins / total) * 100) : 0,
     wins,
     total,
+    open,
     recent,
   };
 }

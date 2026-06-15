@@ -4,6 +4,8 @@ import { processKapAlerts, seedKapSeen } from "@/lib/kap/alerts";
 import { runGlobalNews, runStockNews } from "@/lib/news/engine";
 import { checkPriceLevelAlerts } from "@/lib/price-alerts";
 import { buildEnhancedSignal } from "@/lib/signal-engine";
+import { buildTaSummary } from "@/lib/signal-display";
+import { syncSignals, type SignalSyncEntry } from "@/lib/signal-sync";
 import { computeSectorTrends } from "@/lib/sectors";
 import {
   sendTelegramAlert,
@@ -218,7 +220,12 @@ export async function runTelegramCronJob(): Promise<CronTelegramResult> {
     changePercent: quotes[symbol]?.changePercent,
   }));
 
-  const sectorTrends = computeSectorTrends(prices, {});
+  const analysisMap: Record<string, NonNullable<Awaited<ReturnType<typeof analyzeSymbol>>>> = {};
+  for (const row of scanResults) {
+    if (row.analysis) analysisMap[row.symbol] = row.analysis;
+  }
+
+  const sectorTrends = computeSectorTrends(prices, analysisMap);
 
   const lastScan = await loadLastScanSignals();
   const nextScan = { ...lastScan };
@@ -277,6 +284,38 @@ export async function runTelegramCronJob(): Promise<CronTelegramResult> {
   }
 
   await saveLastScanSignals(nextScan);
+
+  const syncEntries: SignalSyncEntry[] = [];
+  for (const { symbol, analysis, stock: stockNews } of scanResults) {
+    if (!analysis) continue;
+    const price = quotes[symbol]?.price ?? null;
+    const enhanced = buildEnhancedSignal(
+      symbol,
+      analysis,
+      stockNews,
+      globalNews,
+      price,
+      sectorTrends
+    );
+    syncEntries.push({
+      symbol,
+      signalEn: enhanced.combined.signalEn,
+      signalTr: enhanced.combined.signalTr,
+      price,
+      reason: enhanced.combined.reason,
+      taSummary: buildTaSummary(analysis),
+      technicalReason: analysis.technicalReason,
+    });
+  }
+
+  try {
+    await syncSignals(
+      prices.map((p) => ({ symbol: p.symbol, price: p.price })),
+      syncEntries
+    );
+  } catch {
+    // Skor senkronu basarisiz olsa cron devam etsin
+  }
 
   const quoteMap = Object.fromEntries(
     symbols.map((symbol) => [symbol, { price: quotes[symbol]?.price ?? null }])

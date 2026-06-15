@@ -1271,6 +1271,10 @@ input {
   color: var(--red);
 }
 
+.success-pending .success-score-value {
+  color: var(--amber, #f59e0b);
+}
+
 /* Stock Card Enhancements */
 .sector-info-box {
   display: flex;
