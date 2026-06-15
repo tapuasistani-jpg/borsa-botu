@@ -16,11 +16,14 @@ export interface SignalRecord {
   id: string;
   symbol: string;
   signalEn: string;
+  signalTr?: string;
   entryPrice: number;
   timestamp: number;
   status: SignalRecordStatus;
   exitPrice?: number;
   evaluatedAt?: number;
+  reason?: string;
+  taSummary?: string;
 }
 
 export interface SuccessScore {
@@ -68,7 +71,8 @@ export function recordSignalIfNew(
   symbol: string,
   signalEn: string,
   price: number | null,
-  lastRecorded?: string
+  lastRecorded?: string,
+  meta?: { signalTr?: string; reason?: string; taSummary?: string }
 ): string | undefined {
   if (!ACTIONABLE.has(signalEn) || price === null || price <= 0) {
     return lastRecorded;
@@ -83,9 +87,12 @@ export function recordSignalIfNew(
     id: `${symbol}-${Date.now()}`,
     symbol,
     signalEn,
+    signalTr: meta?.signalTr,
     entryPrice: price,
     timestamp: Date.now(),
     status: "OPEN",
+    reason: meta?.reason,
+    taSummary: meta?.taSummary,
   });
   saveRecords(records);
   return signalEn;
@@ -165,6 +172,30 @@ export function getSuccessScore(): SuccessScore {
     total,
     recent,
   };
+}
+
+export function getSignalLog(limit = 30): SignalRecord[] {
+  const records = loadRecords();
+  return [...records].sort((a, b) => b.timestamp - a.timestamp).slice(0, limit);
+}
+
+export function signalEnToTr(signalEn: string): string {
+  const map: Record<string, string> = {
+    "STRONG BUY": "GUCULU AL",
+    BUY: "AL",
+    "RISKY BUY": "RISKLI AL",
+    HOLD: "DUR",
+    NEUTRAL: "BEKLE",
+    SELL: "SAT",
+    "STRONG SELL": "GUCULU SAT",
+  };
+  return map[signalEn] ?? signalEn;
+}
+
+export function signalStatusLabel(status: SignalRecordStatus): string {
+  if (status === "WIN") return "Basarili";
+  if (status === "LOSS") return "Basarisiz";
+  return "Acik";
 }
 
 export function loadSignalState(): Record<string, string> {

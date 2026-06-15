@@ -10,6 +10,13 @@ import { buildEnhancedSignal } from "@/lib/signal-engine";
 import type { Bist100Comparison } from "@/lib/bist100";
 import type { SectorId, SectorTrendInfo } from "@/lib/sectors";
 import TradingViewWidget from "@/components/TradingViewWidget";
+import {
+  buildTaSummary,
+  getSignalTone,
+  shouldPulseSignal,
+  signalStripClass,
+  stockCardClass,
+} from "@/lib/signal-display";
 
 interface StockCardProps {
   symbol: string;
@@ -26,13 +33,6 @@ function scoreLabel(score: number) {
   if (score > 0) return { text: "AL", className: "chip-bull" };
   if (score < 0) return { text: "SAT", className: "chip-bear" };
   return { text: "-", className: "chip-neutral" };
-}
-
-function combinedSignalClass(color: string) {
-  if (color === "green") return "signal-badge signal-green";
-  if (color === "red") return "signal-badge signal-red";
-  if (color === "orange") return "signal-badge signal-orange";
-  return "signal-badge signal-yellow";
 }
 
 function alertClass(sentiment: string) {
@@ -74,8 +74,18 @@ export default function StockCard({
   const sentiment = stockNews?.sentiment ?? "NEUTRAL";
   const [showChart, setShowChart] = useState(false);
 
+  const tone = getSignalTone(combined.signalEn);
+  const pulse = shouldPulseSignal(combined.signalEn);
+  const stripClass = signalStripClass(tone, pulse);
+
   return (
-    <article className="stock-card">
+    <article className={stockCardClass(tone)}>
+      <div className={stripClass}>
+        <span className="signal-strip-label">{combined.signalTr}</span>
+        <span className="signal-strip-en">({combined.signalEn})</span>
+      </div>
+
+      <div className="stock-card-body">
       <div className="stock-card-header">
         <div>
           <div className="stock-symbol">{symbol}</div>
@@ -89,12 +99,6 @@ export default function StockCard({
             </div>
           )}
         </div>
-        <span className={combinedSignalClass(combined.color)}>
-          {combined.signalTr}
-          <span style={{ opacity: 0.75, marginLeft: 4, fontWeight: 400 }}>
-            ({combined.signalEn})
-          </span>
-        </span>
       </div>
 
       {bist100Comparison && (
@@ -268,6 +272,7 @@ export default function StockCard({
           </div>
         )}
         <p className="ai-news-reason">{combined.reason}</p>
+      </div>
       </div>
     </article>
   );

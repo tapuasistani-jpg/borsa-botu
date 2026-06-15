@@ -9,6 +9,7 @@ import {
   recordSignalIfNew,
   saveSignalState,
 } from "@/lib/signal-history";
+import { buildTaSummary } from "@/lib/signal-display";
 import { buildEnhancedSignal } from "@/lib/signal-engine";
 import type {
   GlobalNewsResult,
@@ -68,7 +69,12 @@ export function useSignalHistory({
         symbol,
         enhanced.combined.signalEn,
         price,
-        state[symbol]
+        state[symbol],
+        {
+          signalTr: enhanced.combined.signalTr,
+          reason: enhanced.combined.reason,
+          taSummary: buildTaSummary(analysis),
+        }
       );
       if (next) {
         state[symbol] = next;

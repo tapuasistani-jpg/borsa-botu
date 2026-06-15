@@ -11,6 +11,7 @@ interface CronStatusData {
   telegramConfigured: boolean;
   cronSecretConfigured: boolean;
   cronEndpoint: string;
+  cronEndpointWithSecret?: string;
   setupHint: string;
 }
 
@@ -64,31 +65,46 @@ export default function CronStatusBadge({
       </div>
 
       {!data.cronSecretConfigured && (
-        <p className="cron-warn">CRON_SECRET tanimli degil.</p>
+        <p className="cron-warn">
+          CRON_SECRET Vercel&apos;de tanimli degil (Production env).
+        </p>
       )}
       {!data.telegramConfigured && (
         <p className="cron-warn">Telegram env degiskenleri eksik.</p>
       )}
 
+      <p className="cron-warn cron-warn-info">{data.setupHint}</p>
+
       <details className="cron-setup">
-        <summary>cron-job.org kurulumu (15 dk)</summary>
+        <summary>cron-job.org kurulumu (401 cozumu)</summary>
         <ol>
           <li>
-            <a
-              href="https://cron-job.org"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              cron-job.org
-            </a>{" "}
-            uzerinde yeni cron olustur
+            <strong>URL (preview degil, production):</strong>
+            <br />
+            <code>{data.cronEndpoint}</code>
           </li>
-          <li>URL: <code>{data.cronEndpoint}</code></li>
-          <li>Schedule: Every 15 minutes</li>
           <li>
-            Header: <code>Authorization: Bearer CRON_SECRET</code>
+            Preview linki kullanma (
+            <code>*-projects.vercel.app</code> → 401 verir)
           </li>
-          <li>Dashboard&apos;da &quot;Cron Senkron&quot; ile izleme listesini gonder</li>
+          <li>Schedule: Every 15 minutes · Method: GET</li>
+          <li>
+            <strong>Yontem A — Header (onerilen):</strong>
+            <br />
+            Name: <code>Authorization</code>
+            <br />
+            Value: <code>Bearer .env.local icindeki CRON_SECRET</code>
+          </li>
+          <li>
+            <strong>Yontem B — URL parametresi (header zor ise):</strong>
+            <br />
+            <code>{data.cronEndpointWithSecret ?? `${data.cronEndpoint}?secret=...`}</code>
+          </li>
+          <li>
+            Vercel → Settings → Environment Variables →{" "}
+            <code>CRON_SECRET</code> (Production) → Redeploy
+          </li>
+          <li>Dashboard&apos;da Cron Senkron</li>
         </ol>
       </details>
     </section>

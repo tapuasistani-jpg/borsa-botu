@@ -4,6 +4,7 @@ import {
   loadCronHeartbeat,
   upsertTradeLevelsCache,
 } from "@/lib/cron/telegram-state";
+import { isCronSecretConfigured } from "@/lib/cron/auth";
 import { isTelegramConfigured } from "@/lib/telegram/send";
 
 export const dynamic = "force-dynamic";
@@ -31,11 +32,9 @@ export async function GET() {
     status = minutesSinceLastRun <= threshold ? "active" : "delayed";
   }
 
-  const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
-    (process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "https://borsa-botu.vercel.app");
+  const productionUrl =
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://borsa-botu.vercel.app";
+  const cronEndpoint = `${productionUrl}/api/cron/telegram`;
 
   return NextResponse.json({
     status,
@@ -46,10 +45,11 @@ export async function GET() {
     lastKapAlertsSent: heartbeat?.kapAlertsSent ?? 0,
     lastPriceAlertsSent: heartbeat?.priceAlertsSent ?? 0,
     telegramConfigured: isTelegramConfigured(),
-    cronSecretConfigured: Boolean(process.env.CRON_SECRET?.trim()),
-    cronEndpoint: `${siteUrl}/api/cron/telegram`,
+    cronSecretConfigured: isCronSecretConfigured(),
+    cronEndpoint,
+    cronEndpointWithSecret: `${cronEndpoint}?secret=CRON_SECRET_DEGERIN`,
     setupHint:
-      "cron-job.org → Every 15 minutes → GET + Authorization: Bearer CRON_SECRET",
+      "Production URL kullan. Preview (*.vercel.app deploy linki) 401 verir.",
   });
 }
 
