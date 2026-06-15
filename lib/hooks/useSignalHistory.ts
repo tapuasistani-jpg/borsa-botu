@@ -74,6 +74,7 @@ export function useSignalHistory({
           signalTr: enhanced.combined.signalTr,
           reason: enhanced.combined.reason,
           taSummary: buildTaSummary(analysis),
+          technicalReason: analysis.technicalReason,
         }
       );
       if (next) {

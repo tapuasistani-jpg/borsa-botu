@@ -24,6 +24,7 @@ export interface SignalRecord {
   evaluatedAt?: number;
   reason?: string;
   taSummary?: string;
+  technicalReason?: string;
 }
 
 export interface SuccessScore {
@@ -72,7 +73,12 @@ export function recordSignalIfNew(
   signalEn: string,
   price: number | null,
   lastRecorded?: string,
-  meta?: { signalTr?: string; reason?: string; taSummary?: string }
+  meta?: {
+    signalTr?: string;
+    reason?: string;
+    taSummary?: string;
+    technicalReason?: string;
+  }
 ): string | undefined {
   if (!ACTIONABLE.has(signalEn) || price === null || price <= 0) {
     return lastRecorded;
@@ -93,6 +99,7 @@ export function recordSignalIfNew(
     status: "OPEN",
     reason: meta?.reason,
     taSummary: meta?.taSummary,
+    technicalReason: meta?.technicalReason,
   });
   saveRecords(records);
   return signalEn;

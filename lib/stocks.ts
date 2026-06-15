@@ -34,6 +34,7 @@ export interface StockAnalysis {
   color: SignalColor;
   totalScore: number;
   scores: IndicatorScores;
+  price: number;
   rsi: number;
   macd: number;
   macdSignal: number;
@@ -42,6 +43,8 @@ export interface StockAnalysis {
   bbLower: number;
   bbUpper: number;
   bbMiddle: number;
+  /** Sinyali tetikleyen indikatörlerin sayisal ozeti */
+  technicalReason: string;
   updatedAt: string;
 }
 

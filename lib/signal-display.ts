@@ -25,6 +25,7 @@ export function isStrongSignal(signalEn: string): boolean {
 
 export function buildTaSummary(analysis: StockAnalysis | null): string {
   if (!analysis) return "—";
+  if (analysis.technicalReason) return analysis.technicalReason;
 
   const chip = (score: number) =>
     score > 0 ? "AL" : score < 0 ? "SAT" : "Notr";
@@ -36,6 +37,30 @@ export function buildTaSummary(analysis: StockAnalysis | null): string {
     `EMA:${chip(analysis.scores.ema)}`,
     `Teknik:${analysis.signalTr}`,
   ].join(" · ");
+}
+
+export function formatSignalTechnicalReason(record: {
+  technicalReason?: string;
+  taSummary?: string;
+  reason?: string;
+}): { primary: string; secondary?: string } {
+  const primary =
+    record.technicalReason?.trim() ||
+    record.taSummary?.trim() ||
+    "";
+
+  if (primary) {
+    return {
+      primary,
+      secondary: record.reason?.trim() || undefined,
+    };
+  }
+
+  if (record.reason?.trim()) {
+    return { primary: record.reason.trim() };
+  }
+
+  return { primary: "—" };
 }
 
 export function stockCardClass(tone: SignalTone, signalEn: string): string {

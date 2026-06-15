@@ -6,6 +6,7 @@ import {
   signalEnToTr,
   signalStatusLabel,
 } from "@/lib/signal-history";
+import { formatSignalTechnicalReason } from "@/lib/signal-display";
 
 interface SignalHistoryModalProps {
   open: boolean;
@@ -94,7 +95,9 @@ export default function SignalHistoryModal({
                 </tr>
               </thead>
               <tbody>
-                {records.map((row) => (
+                {records.map((row) => {
+                  const gerekce = formatSignalTechnicalReason(row);
+                  return (
                   <tr key={row.id}>
                     <td className="log-symbol">{row.symbol}</td>
                     <td>
@@ -109,9 +112,9 @@ export default function SignalHistoryModal({
                     </td>
                     <td className="log-price">{row.entryPrice.toFixed(2)} TL</td>
                     <td className="log-reason">
-                      <span className="log-ta">{row.taSummary ?? "—"}</span>
-                      {row.reason && (
-                        <span className="log-detail">{row.reason}</span>
+                      <span className="log-ta">{gerekce.primary}</span>
+                      {gerekce.secondary && (
+                        <span className="log-detail">{gerekce.secondary}</span>
                       )}
                     </td>
                     <td>
@@ -120,7 +123,8 @@ export default function SignalHistoryModal({
                       </span>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

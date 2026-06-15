@@ -44,6 +44,79 @@ function emaScore(price: number, ema20: number, ema50: number): number {
   return 0;
 }
 
+function scoreLabel(score: number): string {
+  if (score > 0) return "AL";
+  if (score < 0) return "SAT";
+  return "Notr";
+}
+
+function bbPositionLabel(
+  price: number,
+  lower: number,
+  upper: number,
+  middle: number
+): string {
+  if (price <= lower) return "alt band";
+  if (price >= upper) return "ust band";
+  if (price > middle) return "orta-ust";
+  if (price < middle) return "orta-alt";
+  return "orta";
+}
+
+export function buildTechnicalReason(input: {
+  price: number;
+  rsi: number;
+  macd: number;
+  macdSignal: number;
+  ema20: number;
+  ema50: number;
+  bbLower: number;
+  bbUpper: number;
+  bbMiddle: number;
+  scores: IndicatorScores;
+  totalScore: number;
+}): string {
+  const {
+    price,
+    rsi,
+    macd,
+    macdSignal,
+    ema20,
+    ema50,
+    bbLower,
+    bbUpper,
+    bbMiddle,
+    scores,
+    totalScore,
+  } = input;
+
+  const triggers: string[] = [];
+  if (scores.rsi !== 0) {
+    triggers.push(`RSI ${rsi.toFixed(1)}→${scoreLabel(scores.rsi)}`);
+  }
+  if (scores.macd !== 0) {
+    const dir = macd > macdSignal ? "yukari" : "asagi";
+    triggers.push(`MACD ${macd.toFixed(3)} ${dir}→${scoreLabel(scores.macd)}`);
+  }
+  if (scores.bollinger !== 0) {
+    triggers.push(
+      `BB ${bbPositionLabel(price, bbLower, bbUpper, bbMiddle)}→${scoreLabel(scores.bollinger)}`
+    );
+  }
+  if (scores.ema !== 0) {
+    triggers.push(
+      `EMA20 ${ema20.toFixed(2)}/50 ${ema50.toFixed(2)}→${scoreLabel(scores.ema)}`
+    );
+  }
+
+  const triggerText =
+    triggers.length > 0 ? triggers.join(" · ") : "Net yon yok (karisik indikatörler)";
+
+  const scoreText = `Puan ${totalScore >= 0 ? "+" : ""}${totalScore}`;
+
+  return `${triggerText} | ${scoreText}`;
+}
+
 export function combinedDecision(scores: number[]): {
   signalEn: SignalType;
   signalTr: string;
@@ -128,6 +201,22 @@ export function analyzeStock(symbol: string, candles: OhlcCandle[]): StockAnalys
 
   const decision = combinedDecision(Object.values(scores));
   const now = new Date().toLocaleTimeString("tr-TR");
+  const macdValue = macd.MACD;
+  const macdSignalValue = macd.signal;
+
+  const technicalReason = buildTechnicalReason({
+    price,
+    rsi,
+    macd: macdValue,
+    macdSignal: macdSignalValue,
+    ema20,
+    ema50,
+    bbLower: bb.lower,
+    bbUpper: bb.upper,
+    bbMiddle: bb.middle,
+    scores,
+    totalScore: decision.totalScore,
+  });
 
   return {
     symbol,
@@ -136,14 +225,16 @@ export function analyzeStock(symbol: string, candles: OhlcCandle[]): StockAnalys
     color: decision.color,
     totalScore: decision.totalScore,
     scores,
+    price,
     rsi,
-    macd: macd.MACD,
-    macdSignal: macd.signal,
+    macd: macdValue,
+    macdSignal: macdSignalValue,
     ema20,
     ema50,
     bbLower: bb.lower,
     bbUpper: bb.upper,
     bbMiddle: bb.middle,
+    technicalReason,
     updatedAt: now,
   };
 }
